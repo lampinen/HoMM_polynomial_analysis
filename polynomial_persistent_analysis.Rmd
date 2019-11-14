@@ -76,6 +76,13 @@ loss_d = loss_d %>%
   
 ```
 
+```{r}
+meta_true_d = meta_true_d %>%
+  filter(epoch %% 100 == 0) %>%
+  gather(task, loss, -epoch, -run, -run_type) %>%
+  separate(task, c("meta_task", "mapping_toe", "base_task_toe", "source", "target"), ":|->")
+  
+```
 
 
 # basic plots
@@ -91,3 +98,10 @@ ggplot(loss_d,
   facet_grid(run_type ~ meta)
 ```
 
+```{r}
+ggplot(meta_true_d,
+       aes(x=epoch, y=loss, color=base_task_toe, linetype=mapping_toe)) +
+  geom_line(stat="summary",
+            fun.y="mean") +
+  facet_wrap(~run_type)
+```
