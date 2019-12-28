@@ -35,19 +35,19 @@ if True:  # enable for weight norm
     run_config.update({
         "output_dir": run_config["output_dir"][:-1] + "_weight_norm/", 
     })
-    if False:  # Weight norm skip last layer
+    if False:  # Weight norm properly 
         architecture_config.update({
-            "F_wn_skip_last": True,
+            "F_wn_strategy": "standard",
         })
         run_config.update({
-            "output_dir": run_config["output_dir"][:-1] + "_skip_last/", 
+            "output_dir": run_config["output_dir"][:-1] + "_strategy_standard/", 
         })
-    if True:  # Weight norm properly 
+    if True:  # Weight norm last only 
         architecture_config.update({
-            "F_wn_scalar_magnitude": True,
+            "F_wn_strategy": "unit_until_last",
         })
         run_config.update({
-            "output_dir": run_config["output_dir"][:-1] + "_scalar_magnitude/", 
+            "output_dir": run_config["output_dir"][:-1] + "_strategy_unit_until_last/", 
         })
 
 class poly_HoMM_model(HoMM_model.HoMM_model):
