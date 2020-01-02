@@ -11,7 +11,7 @@ import polynomials
 
 run_config = default_run_config.default_run_config
 run_config.update({
-    "output_dir": "weight_norm_results/basic/",
+    "output_dir": "optimization_results/basic/",
     
     "num_base_train_tasks": 60, # prior to meta-augmentation
     "num_base_eval_tasks": 40, # prior to meta-augmentation
@@ -21,6 +21,8 @@ run_config.update({
     "poly_coeff_sd": 2.5,
     "point_val_range": 1,
 
+    "num_epochs": 1000,
+
     "meta_add_vals": [-3, -1, 1, 3],
     "meta_mult_vals": [-3, -1, 3],
     "new_meta_tasks": [],
@@ -28,21 +30,24 @@ run_config.update({
 })
 
 architecture_config = default_architecture_config.default_architecture_config
-if True:  # enable for weight norm 
+#architecture_config.update({
+#    "train_drop_prob": 0.5,
+#})
+if False:  # enable for weight norm 
     architecture_config.update({
         "F_weight_normalization": True,
     })
     run_config.update({
         "output_dir": run_config["output_dir"][:-1] + "_weight_norm/", 
     })
-    if False:  # Weight norm properly 
+    if True:  # Weight norm properly 
         architecture_config.update({
             "F_wn_strategy": "standard",
         })
         run_config.update({
             "output_dir": run_config["output_dir"][:-1] + "_strategy_standard/", 
         })
-    if True:  # Weight norm last only 
+    if False:  # Weight norm last only 
         architecture_config.update({
             "F_wn_strategy": "unit_until_last",
         })
@@ -139,5 +144,6 @@ for run_i in range(run_config["num_runs"]):
 
     model = poly_HoMM_model(run_config=run_config)
     model.run_training()
+    model.guess_embeddings_and_optimize()
 
     tf.reset_default_graph()
