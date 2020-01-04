@@ -22,6 +22,7 @@ run_config.update({
     "point_val_range": 1,
 
     "num_epochs": 1000,
+    "num_optimization_epochs": 250,
 
     "meta_add_vals": [-3, -1, 1, 3],
     "meta_mult_vals": [-3, -1, 3],
@@ -144,6 +145,6 @@ for run_i in range(run_config["num_runs"]):
 
     model = poly_HoMM_model(run_config=run_config)
     model.run_training()
-    model.guess_embeddings_and_optimize()
+    model.guess_embeddings_and_optimize(num_optimization_epochs=run_config["num_optimization_epochs"], eval_every=2, random_init_scale=0.1)
 
     tf.reset_default_graph()
