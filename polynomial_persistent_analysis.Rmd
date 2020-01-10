@@ -12,8 +12,21 @@ library(tidyverse)
 
 ```{r}
 parent_dir = "polynomial_results"
-subdirs = c("polynomials_results", "polynomials_results_persistentno_meta", "polynomials_results_persistent")
-num_runs = 1
+subdirs = c("polynomials_results_40base", 
+            "polynomials_results_persistent_40base_no_meta", "polynomials_results_persistent_40base",
+            #"polynomials_results_persistent_2_40base_no_meta", "polynomials_results_persistent_2_40base",
+            "polynomials_results_persistent_6_40base_no_meta", 
+            "polynomials_results_persistent_7_40base_no_meta", 
+            "polynomials_results_persistent_8_40base_no_meta" 
+            
+            #"polynomials_results_2_persistent_10base_no_meta", "polynomials_results_3_persistent_10base_no_meta",
+            #"polynomials_results_5_persistent_10base", "polynomials_results_5_persistent_10base_no_meta",
+            #"polynomials_results_6_persistent_10base", "polynomials_results_6_persistent_10base_no_meta",
+            # "polynomials_results_7_persistent_10base", "polynomials_results_7_persistent_10base_no_meta",
+            # "polynomials_results_8_persistent_10base", "polynomials_results_7_persistent_10base_no_meta",
+            # "polynomials_results_9_persistent_10base", "polynomials_results_9_persistent_10base_no_meta"
+            )
+num_runs = 3
 ```
 
 ```{r}
@@ -95,7 +108,8 @@ ggplot(loss_d,
        aes(x=epoch, y=loss, color=train_or_eval)) +
   geom_line(stat="summary",
             fun.y="mean") +
-  facet_grid(run_type ~ meta)
+  facet_grid(run_type + run ~ meta) +
+  ylim(NA, 10)
 ```
 
 ```{r}
@@ -103,5 +117,15 @@ ggplot(meta_true_d,
        aes(x=epoch, y=loss, color=base_task_toe, linetype=mapping_toe)) +
   geom_line(stat="summary",
             fun.y="mean") +
-  facet_wrap(~run_type)
+  facet_grid(run ~run_type )
+```
+
+
+
+```{r}
+ggplot(loss_d %>% filter(!meta),
+       aes(x=epoch, y=loss, linetype=train_or_eval, color=run)) +
+  geom_line(stat="summary",
+            fun.y="mean") +
+  facet_wrap(~ run_type)
 ```
