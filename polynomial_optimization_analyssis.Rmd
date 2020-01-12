@@ -114,7 +114,7 @@ ggplot(loss_d %>%
             na.rm=T,
             alpha=0.4) +
   geom_hline(yintercept=log(5.9), alpha=0.5, linetype=2) +
-  scale_color_manual(values=c("#984ea3", "#477ec8", "#e41a1c")) +
+  scale_color_manual(values=c("#e41a1c", "#984ea3", "#477ec8")) +
   annotate("text", x=240, y=log(4.2), alpha=0.5, label="Chance") +
   labs(x="Epoch (training task embeddings on new data)", y="Log loss on new tasks") +
   guides(color=guide_legend(title=""))
@@ -127,9 +127,9 @@ ggplot(loss_d %>%
          filter(train_or_eval == "eval",
                 !is.na(loss)) %>%
          group_by(init_type, run, task) %>%
-         summarize(log_regret_int=log(sum(loss))) %>%
+         summarise(log_regret_int=log(sum(loss))) %>%
          group_by(init_type, run) %>%
-         summarize(mean_lri=mean(log_regret_int, na.rm=T)) %>%
+         summarise(mean_lri=mean(log_regret_int, na.rm=T)) %>%
          ungroup() %>%
          mutate(init_type=factor(init_type, levels=c("guess", "arbitrary_train_task", "random_init"), labels=c("Meta-mapping output", "Arbitrary train task", "Random vector"))),
        aes(x=init_type, y=mean_lri, fill=init_type)) +
@@ -138,7 +138,7 @@ ggplot(loss_d %>%
   geom_errorbar(stat="summary",
                 fun.data="mean_cl_normal",
                 width=0.5) +
-  scale_fill_manual(values=c("#984ea3", "#477ec8", "#e41a1c")) +
+  scale_fill_manual(values=c("#e41a1c", "#984ea3", "#477ec8")) +
   labs(x="Initialization", y="Mean log cumulative regret on new task") +
   guides(color=guide_legend(title=""))
 
