@@ -140,7 +140,7 @@ ggplot(loss_d %>%
                 width=0.5) +
   scale_fill_manual(values=c("#e41a1c", "#984ea3", "#477ec8")) +
   labs(x="Initialization", y="Mean log cumulative regret on new task") +
-  guides(color=guide_legend(title=""))
+  guides(fill=guide_legend(title=""))
 
 ggsave("../../psych/dissertation/5-timescales/figures/polynomial_optimization_cumulative_regret.png", width=6, height=4)
 ```
