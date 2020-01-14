@@ -11,7 +11,7 @@ import polynomials
 
 run_config = default_run_config.default_run_config
 run_config.update({
-    "output_dir": "optimization_results/updated/",
+    "output_dir": "optimization_results/untrained_baseline/",
     "run_offset": 0,
     "num_runs": 5,
     
@@ -23,7 +23,7 @@ run_config.update({
     "poly_coeff_sd": 2.5,
     "point_val_range": 1,
 
-    "num_epochs": 1000,
+    "num_epochs": 0,#1000,
     "num_optimization_epochs": 250,
 
     "meta_add_vals": [-3, -1, 1, 3],
