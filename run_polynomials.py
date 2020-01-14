@@ -11,7 +11,9 @@ import polynomials
 
 run_config = default_run_config.default_run_config
 run_config.update({
-    "output_dir": "optimization_results/basic/",
+    "output_dir": "optimization_results/updated/",
+    "run_offset": 0,
+    "num_runs": 5,
     
     "num_base_train_tasks": 60, # prior to meta-augmentation
     "num_base_eval_tasks": 40, # prior to meta-augmentation
@@ -99,9 +101,13 @@ class poly_HoMM_model(HoMM_model.HoMM_model):
             meta_map_train_tasks=self.meta_map_train_tasks,
             meta_map_eval_tasks=self.meta_map_eval_tasks) 
 
+        # for these experiments, we want every eval task to be a meta-mapping
+        # of a trained task, so we just move all base_eval_tasks to train, and replace them with implied.
+        self.base_train_tasks += self.base_eval_tasks 
+        self.base_eval_tasks = implied_tasks_eval_tasks
+
         # add the base tasks implied by the mappings
         self.base_train_tasks += implied_tasks_train_tasks
-        self.base_eval_tasks += implied_tasks_eval_tasks
 
     def fill_buffers(self, num_data_points=1):
         """Add new "experiences" to memory buffers."""
@@ -138,7 +144,7 @@ class poly_HoMM_model(HoMM_model.HoMM_model):
 
 
 ## running stuff
-for run_i in range(run_config["num_runs"]):
+for run_i in range(run_config["run_offset"], run_config["run_offset"] + run_config["num_runs"]):
     np.random.seed(run_i)
     tf.set_random_seed(run_i)
     run_config["this_run"] = run_i
