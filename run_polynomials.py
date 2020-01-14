@@ -11,7 +11,7 @@ import polynomials
 
 run_config = default_run_config.default_run_config
 run_config.update({
-    "output_dir": "optimization_results/untrained_baseline/",
+    "output_dir": "optimization_results/updated/",
     "run_offset": 0,
     "num_runs": 5,
     
@@ -23,13 +23,13 @@ run_config.update({
     "poly_coeff_sd": 2.5,
     "point_val_range": 1,
 
-    "num_epochs": 0,#1000,
+    "num_epochs": 1000,
     "num_optimization_epochs": 250,
 
     "meta_add_vals": [-3, -1, 1, 3],
     "meta_mult_vals": [-3, -1, 3],
     "new_meta_tasks": [],
-    "new_meta_mappings": ["add_%f" % 2., "add_%f" % -2., "mult_%f" % 2., "mult_%f" % -2.],
+    "new_meta_mappings": [],#["add_%f" % 2., "add_%f" % -2., "mult_%f" % 2., "mult_%f" % -2.],
 })
 
 architecture_config = default_architecture_config.default_architecture_config
@@ -83,7 +83,7 @@ class poly_HoMM_model(HoMM_model.HoMM_model):
         np.random.seed(0)
         np.random.shuffle(permutation_mappings)
         self.meta_map_train_tasks += permutation_mappings[:len(permutation_mappings)//2]
-        self.meta_map_eval_tasks += permutation_mappings[len(permutation_mappings)//2:]
+        #self.meta_map_eval_tasks += permutation_mappings[len(permutation_mappings)//2:]
 
         # set up language
 
