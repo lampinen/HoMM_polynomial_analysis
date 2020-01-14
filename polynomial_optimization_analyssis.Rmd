@@ -1,0 +1,146 @@
+---
+title: "Polynomial optimzation analysis"
+author: "Andrew Lampinen"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(Hmisc)
+```
+
+# data loading
+
+```{r}
+parent_dir = "optimization_results"
+subdirs = c("basic")
+num_runs = 5
+```
+
+```{r}
+read_config = function(config_file) { 
+  config = read_delim(config_file, delim="\n") %>%
+    separate(`key, value`, c("key", "value"), sep=",", extra="merge") %>%
+    spread(key, value) %>%
+    mutate_at(c("base_train_tasks", "base_eval_tasks", "meta_class_train_tasks", "meta_class_eval_tasks", "meta_map_train_tasks", "meta_map_eval_tasks"), function(x) {
+      x = gsub("\\\"|[][]| |\'", "", x)
+      return(str_split(x, ","))
+    } )
+}
+```
+
+```{r}
+load_d = function(results_dir, result_subdirs, num_runs, file_type) {
+  d = data.frame()
+  for (run_i in 0:(num_runs-1)) {
+    for (result_subdir in result_subdirs) {
+      filename = sprintf("%s/%s/run%i_%s.csv", results_dir, result_subdir, run_i, file_type)
+      print(filename)
+      if (!file.exists(filename)) {
+        print(paste("skipping ", filename, sep=""))
+        next
+      }
+      if (grepl("config", file_type)) {
+        this_d = read_config(filename)
+      } else {
+        this_d = read.csv(filename, check.names=F, header=T) 
+        names(this_d) <- make.unique(names(this_d))
+
+      }
+      this_d = this_d %>%
+        mutate(run = run_i,
+               run_type = result_subdir)
+      d = d %>%
+        bind_rows(this_d)
+    }
+    
+  }
+  return(d)
+}
+```
+
+```{r}
+config_d = load_d(parent_dir, subdirs, num_runs, "run_config")
+guess_opt_loss_d = load_d(parent_dir, subdirs, num_runs, "guess_opt_losses") %>% 
+  mutate(init_type = "guess")
+random_opt_loss_d = load_d(parent_dir, subdirs, num_runs, "random_init_opt_losses") %>% 
+  mutate(init_type = "random_init")
+arbitrary_opt_loss_d = load_d(parent_dir, subdirs, num_runs, "arbitrary_trained_opt_losses") %>% 
+  mutate(init_type = "arbitrary_train_task")
+
+loss_d = bind_rows(guess_opt_loss_d, random_opt_loss_d, arbitrary_opt_loss_d)
+guess_opt_loss_d = data.frame()
+random_opt_loss_d = data.frame()
+arbitrary_opt_loss_d = data.frame()
+```
+
+# some manipulation
+
+```{r}
+loss_d = loss_d %>%
+  gather(task_and_train_or_eval, loss, -epoch, -run, -run_type, -init_type) %>%
+  separate(task_and_train_or_eval, c("task", "train_or_eval"), sep=":") %>%
+  mutate(train_or_eval = sub("\\.[0-9]+", "", train_or_eval))
+  
+```
+
+
+# basic plots
+```{r}
+theme_set(theme_classic())
+```
+
+```{r}
+ggplot(loss_d %>%
+         filter(train_or_eval == "eval"),
+       aes(x=epoch, y=log(loss), color=init_type)) +
+  geom_line(stat="summary",
+            fun.y="mean") +
+  facet_wrap(run_type + run ~ .)
+```
+
+```{r}
+ggplot(loss_d %>%
+         filter(train_or_eval == "eval") %>%
+         mutate(init_type=factor(init_type, levels=c("guess", "arbitrary_train_task", "random_init"), labels=c("Meta-mapping output", "Arbitrary train task", "Random vector"))),
+       aes(x=epoch, y=log(loss), color=init_type)) +
+  geom_line(stat="summary",
+            fun.y="mean",
+            na.rm=T,
+            size = 2) +
+  geom_line(aes(group=interaction(run, init_type)),
+            stat="summary",
+            fun.y="mean",
+            na.rm=T,
+            alpha=0.4) +
+  geom_hline(yintercept=log(5.9), alpha=0.5, linetype=2) +
+  scale_color_manual(values=c("#e41a1c", "#984ea3", "#477ec8")) +
+  annotate("text", x=240, y=log(4.2), alpha=0.5, label="Chance") +
+  labs(x="Epoch (training task embeddings on new data)", y="Log loss on new tasks") +
+  guides(color=guide_legend(title=""))
+
+ggsave("../../psych/dissertation/5-timescales/figures/polynomial_optimization_curves.png", width=6, height=4)
+```
+
+```{r}
+ggplot(loss_d %>%
+         filter(train_or_eval == "eval",
+                !is.na(loss)) %>%
+         group_by(init_type, run, task) %>%
+         summarise(log_regret_int=log(sum(loss))) %>%
+         group_by(init_type, run) %>%
+         summarise(mean_lri=mean(log_regret_int, na.rm=T)) %>%
+         ungroup() %>%
+         mutate(init_type=factor(init_type, levels=c("guess", "arbitrary_train_task", "random_init"), labels=c("Meta-mapping output", "Arbitrary train task", "Random vector"))),
+       aes(x=init_type, y=mean_lri, fill=init_type)) +
+  geom_bar(stat="summary",
+           fun.y="mean") +
+  geom_errorbar(stat="summary",
+                fun.data="mean_cl_normal",
+                width=0.5) +
+  scale_fill_manual(values=c("#e41a1c", "#984ea3", "#477ec8")) +
+  labs(x="Initialization", y="Mean log cumulative regret on new task") +
+  guides(color=guide_legend(title=""))
+
+ggsave("../../psych/dissertation/5-timescales/figures/polynomial_optimization_cumulative_regret.png", width=6, height=4)
+```
