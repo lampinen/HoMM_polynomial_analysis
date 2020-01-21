@@ -145,7 +145,8 @@ ggsave("../../psych/dissertation/5-timescales/figures/polynomial_optimization_cu
 ```{r}
 ggplot(loss_d %>%
          filter(train_or_eval == "eval",
-                !is.na(loss)) %>%
+                !is.na(loss),
+                init_type != "untrained") %>%
          group_by(init_type, run, task) %>%
          summarise(regret_int=sum(loss)) %>%
          group_by(init_type, run) %>%
@@ -160,8 +161,20 @@ ggplot(loss_d %>%
                 width=0.5) +
   scale_fill_manual(values=c("#e41a1c", "#ff7f00", "#984ea3", "#477ec8", "#4daf4a")) +
   labs(x="Initialization", y="Mean cumulative regret on new task") +
-  guides(fill=F) + 
-  scale_y_log10()
+  guides(fill=F)
 
 ggsave("../../psych/dissertation/5-timescales/figures/polynomial_optimization_cumulative_regret.png", width=6, height=4)
 ```
+```{r}
+loss_d %>%
+  filter(train_or_eval == "eval",
+         !is.na(loss),
+         init_type != "untrained") %>%
+  group_by(init_type, run, task) %>%
+  summarise(regret_int=sum(loss)) %>%
+  group_by(init_type, run) %>%
+  summarise(mean_lri=mean(regret_int, na.rm=T)) %>%
+  group_by(init_type) %>%
+  summarise(mean_lri=mean(mean_lri))
+```
+
