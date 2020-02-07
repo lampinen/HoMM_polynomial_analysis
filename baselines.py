@@ -24,7 +24,6 @@ def poly_string_to_func(string):
             coefficient = term[:4]
             monomial = term[4:]
         p[monomial] = float(coefficient)
-    print(p)
 
     def p_func(w, x, y, z):
         result = p[""] + p["w"] * w + p["x"] * x + p["y"] * y + p["z"] * z + p["wx"] * w * x + p["wy"] * w * y + p["wz"] * w * z + p["xw"] * x * w + p["xy"] * x * y + p["xz"] * x * z + p["yw"] * y * w + p["yx"] * y * x + p["yz"] * y * z + p["zw"] * z * w + p["zx"] * z * x + p["zy"] * z * y + p["w^2"] * (w ** 2) + p["x^2"] * (x ** 2) + p["y^2"] * (y ** 2) + p["z^2"] * (z ** 2)
@@ -33,28 +32,54 @@ def poly_string_to_func(string):
     return p_func
 
 def meta_string_to_dict(string):
-    example = string.split(":")[-1] 
+    meta_mapping, mm_toe, example_toe, example = string.split(":")
     source, target = example.split("->")
-    source = poly_string_to_func(poly_cleaning(source))
-    target = poly_string_to_func(poly_cleaning(target))
-    return {"string": string,
+    source_func = poly_string_to_func(poly_cleaning(source))
+    target_func = poly_string_to_func(poly_cleaning(target))
+    return {"meta_mapping": meta_mapping,
+            "mm_toe": mm_toe,
+            "example_toe": example_toe,
             "source": source,
-            "target": target}
+            "target": target,
+            "source_func": source_func,
+            "target_func": target_func}
 
+def compute_cross_loss(poly1, poly2, d=0.1):
+    """The squared loss between the polynomials, approximated with d=0.05"""
+    res = 0.
+    num_points = 0
+    for w in np.arange(-1., 1. + d, d):
+        for x in np.arange(-1., 1. + d, d):
+            for y in np.arange(-1., 1. + d, d):
+                for z in np.arange(-1., 1. + d, d):
+                    res += (poly1(w, x, y, z) - poly2(w, x, y, z)) ** 2
+                    num_points += 1
 
-with open("conditioned_vs_hyper_results/polynomials_results/run0_meta_true_losses.csv", "r") as f:
-    header = f.readline()[:-1]
-
-meta_points = header.split(", ")[1:]  # drop epoch
-
-meta_points = [meta_string_to_dict(x) for x in meta_points]
+    return res / num_points
 
 
 if __name__ == "__main__":
-    test_poly = "4.25+2.78X0+-1.10X1+0.45X3+0.22X0^2+0.66X0X3"
-    test_poly = poly_cleaning(test_poly)
-    p = poly_string_to_func(test_poly)
-    print(p(0, 0, 0, 0))
-    print(p(1., 0, 0, 0))
-    print(p(1, 0, 0, 1))
+    zero_func = poly_string_to_func("0.0")
+
+    for run_i in range(5):
+        with open("conditioned_vs_hyper_results/polynomials_results/run{}_meta_true_losses.csv".format(run_i), "r") as f:
+            header = f.readline()[:-1]
+
+        meta_points = header.split(", ")[1:]  # drop epoch
+
+        meta_points = [meta_string_to_dict(x) for x in meta_points]
+
+        with open("conditioned_vs_hyper_results/polynomials_results/run{}_meta_true_baselines.csv".format(run_i), "w") as fout:
+            fout.write("meta_mapping, mapping_toe, base_task_toe, source, target, zeros_loss, unadapted_loss\n")
+            for point in meta_points:
+                zeros_loss = compute_cross_loss(point["target_func"], zero_func)
+                unadapted_loss = compute_cross_loss(point["target_func"], point["source_func"])
+                fout.write("{}, {}, {}, {}, {}, {}, {}\n".format(
+                    point["meta_mapping"],
+                    point["mm_toe"],
+                    point["example_toe"],
+                    point["source"],
+                    point["target"],
+                    zeros_loss,
+                    unadapted_loss))
 
