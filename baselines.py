@@ -17,12 +17,9 @@ def poly_string_to_func(string):
 
     p = defaultdict(lambda: 0.)
     for term in terms:
-        if term[0] == "-":
-            coefficient = term[:5]
-            monomial = term[5:]
-        else:
-            coefficient = term[:4]
-            monomial = term[4:]
+        coefficient_end = number_regex.match(term).end()
+        coefficient = term[:coefficient_end]
+        monomial = term[coefficient_end:]
         p[monomial] = float(coefficient)
 
     def p_func(w, x, y, z):
@@ -47,15 +44,15 @@ def meta_string_to_dict(string):
 def compute_cross_loss(poly1, poly2, d=0.1):
     """The squared loss between the polynomials, approximated with d=0.05"""
     res = 0.
-    num_points = 0
+    n_per = len(np.arange(-1., 1. + d, d)) 
+    mult = (1./n_per) ** 4
     for w in np.arange(-1., 1. + d, d):
         for x in np.arange(-1., 1. + d, d):
             for y in np.arange(-1., 1. + d, d):
                 for z in np.arange(-1., 1. + d, d):
-                    res += (poly1(w, x, y, z) - poly2(w, x, y, z)) ** 2
-                    num_points += 1
+                    res += mult * (poly1(w, x, y, z) - poly2(w, x, y, z)) ** 2
 
-    return res / num_points
+    return res
 
 
 if __name__ == "__main__":
