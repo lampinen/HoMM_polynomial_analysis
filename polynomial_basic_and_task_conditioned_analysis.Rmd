@@ -1,0 +1,232 @@
+---
+title: "Polynomial task-conditioned task-net analysis"
+author: "Andrew Lampinen"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+# data loading
+
+```{r}
+parent_dir = "conditioned_vs_hyper_results"
+subdirs = c("polynomials_results",
+            "polynomials_results_non_hyper"
+            )
+num_runs = 5
+```
+
+```{r}
+read_config = function(config_file) { 
+  config = read_delim(config_file, delim="\n") %>%
+    separate(`key, value`, c("key", "value"), sep=",", extra="merge") %>%
+    spread(key, value) %>%
+    mutate_at(c("base_train_tasks", "base_eval_tasks", "meta_class_train_tasks", "meta_class_eval_tasks", "meta_map_train_tasks", "meta_map_eval_tasks"), function(x) {
+      x = gsub("\\\"|[][]| |\'", "", x)
+      return(str_split(x, ","))
+    } )
+}
+```
+
+```{r}
+load_d = function(results_dir, result_subdirs, num_runs, file_type) {
+  d = data.frame()
+  for (run_i in 0:(num_runs-1)) {
+    for (result_subdir in result_subdirs) {
+      filename = sprintf("%s/%s/run%i_%s.csv", results_dir, result_subdir, run_i, file_type)
+      print(filename)
+      if (!file.exists(filename)) {
+        print(paste("skipping ", filename, sep=""))
+        next
+      }
+      if (grepl("config", file_type)) {
+        this_d = read_config(filename)
+      } else {
+        this_d = read.csv(filename, check.names=F, header=T) 
+        names(this_d) <- make.unique(names(this_d))
+
+      }
+      this_d = this_d %>%
+        mutate(run = run_i,
+               run_type = result_subdir)
+      d = d %>%
+        bind_rows(this_d)
+    }
+    
+  }
+  return(d)
+}
+```
+
+```{r}
+config_d = load_d(parent_dir, subdirs, num_runs, "run_config")
+loss_d = load_d(parent_dir, subdirs, num_runs, "losses")
+meta_true_d = load_d(parent_dir, subdirs, num_runs, "meta_true_losses")
+meta_baseline_d = load_d(parent_dir, subdirs, num_runs, "meta_true_baselines")
+```
+
+# some manipulation
+
+```{r}
+loss_d = loss_d %>%
+  #filter(epoch %% 100 == 0) %>%
+  gather(task_and_train_or_eval, loss, -epoch, -run, -run_type) %>%
+  separate(task_and_train_or_eval, c("task", "train_or_eval"), sep=":") %>%
+  mutate(train_or_eval = sub("\\.[0-9]+", "", train_or_eval),
+         meta = grepl("is|permute|add|mult|square", task))
+  
+```
+
+```{r}
+meta_true_d = meta_true_d %>%
+  #filter(epoch %% 100 == 0) %>%
+  gather(task, loss, -epoch, -run, -run_type) %>%
+  separate(task, c("meta_task", "mapping_toe", "base_task_toe", "source", "target"), ":|->")
+  
+```
+
+```{r}
+meta_summarized_baselines = meta_baseline_d %>%
+  group_by(run) %>%
+  summarize(zeros_loss = mean(zeros_loss),
+            unadapted_loss = mean(unadapted_loss)) %>%
+  ungroup() %>%
+  summarize(zeros_loss = mean(zeros_loss),
+            unadapted_loss = mean(unadapted_loss)) 
+meta_summarized_baselines
+
+chance_baseline = meta_summarized_baselines$zeros_loss[1]
+unadapted_baseline = meta_summarized_baselines$unadapted_loss[1]
+```
+
+
+# basic plots
+```{r}
+theme_set(theme_classic())
+```
+
+```{r}
+ggplot(loss_d,
+       aes(x=epoch, y=loss, color=train_or_eval)) +
+  geom_line(stat="summary",
+            fun.y="mean") +
+  facet_grid(meta ~ run_type + run, scales="free")
+```
+
+```{r}
+ggplot(meta_true_d,
+       aes(x=epoch, y=loss, color=base_task_toe, linetype=mapping_toe)) +
+  geom_line(stat="summary",
+            fun.y="mean") +
+  facet_grid(run ~run_type )
+```
+
+```{r}
+ggplot(meta_true_d,
+       aes(x=epoch, y=loss, color=base_task_toe, linetype=mapping_toe)) +
+  geom_line(stat="summary",
+            fun.y="mean") +
+  geom_hline(yintercept=chance_baseline, alpha=0.5, linetype=2) +
+  geom_hline(yintercept=unadapted_baseline, alpha=0.5, linetype=3) +
+  annotate("text", x=3800, y=15.7, label="Outputting zeros", alpha=0.5) +
+  annotate("text", x=4000, y=13.1, label="No adaptation", alpha=0.5) +
+  xlim(NA, 5000) +
+  facet_wrap(~run_type) 
+  #facet_grid(run ~run_type )
+```
+
+```{r}
+meta_true_d %>%
+  group_by(run_type, run, mapping_toe, base_task_toe) %>%
+  filter(epoch == max(epoch),
+         base_task_toe == "example_is_eval") %>%
+  summarize(mean_loss = mean(loss, na.rm=T))
+```
+
+
+
+```{r}
+ggplot(loss_d %>% filter(!meta),
+       aes(x=epoch, y=loss, linetype=train_or_eval, color=train_or_eval)) +
+  geom_line(stat="summary",
+            fun.y="mean") +
+  facet_wrap(~ run_type)
+```
+
+
+# MM paper plot
+
+summary by run
+```{r}
+meta_summarized_baselines = meta_baseline_d %>%
+  group_by(run, base_task_toe, mapping_toe) %>%
+  summarize(zeros_loss = mean(zeros_loss),
+            unadapted_loss = mean(unadapted_loss)) %>%
+  ungroup() %>%
+  mutate_if(is.factor, function(x) {
+    return(gsub(" ", "", as.character(x)))
+  })
+```
+
+
+dummy: remove once we have run baselines for all runs
+```{r}
+meta_dummy_summarized_baselines = bind_rows(
+  meta_summarized_baselines,
+  meta_summarized_baselines %>% mutate(run = 2))
+
+```
+
+```{r}
+summarized_d = meta_true_d %>%
+  filter(run_type == "polynomials_results") %>%
+  group_by(run) %>%
+  filter(epoch == max(epoch)) %>%
+  group_by(run, mapping_toe, base_task_toe) %>%
+  summarise(mean_loss = mean(loss, na.rm=T)) %>%
+  ungroup() %>%
+  inner_join(meta_dummy_summarized_baselines) %>%
+  mutate_at(vars(contains("toe")), function(x) str_extract(x, "train|eval")) %>%
+  mutate(variance_explained_vs_zeros = (zeros_loss - mean_loss) / zeros_loss,
+         unadapted_variance_explained_vs_zeros = (zeros_loss - unadapted_loss) / zeros_loss) %>%
+  mutate(mapping_toe = factor(mapping_toe, levels=c("train", "eval"),
+                              labels=c("Trained\nmeta-mapping", "New\nmeta-mapping")))
+```
+
+```{r}
+ggplot(summarized_d %>% 
+         filter(base_task_toe == "eval"),
+       aes(x=mapping_toe, y=variance_explained_vs_zeros,
+           color=mapping_toe)) +
+  geom_errorbar(stat="summary",
+                fun.data="mean_cl_boot",
+                width=0.25,
+                size=1) +
+  geom_point(stat="summary",
+             fun.y="mean",
+             size=3) +
+  geom_spoke(aes(x=mapping_toe, y=unadapted_variance_explained_vs_zeros, angle=0, radius=1),
+             stat="summary",
+             fun.y="mean",
+             linetype=3,# alpha=0.5, 
+             size=1,
+             position=position_nudge(x=-0.5)) +
+  geom_hline(yintercept=1., alpha=0.5,
+             linetype=2) +
+  annotate("text", x=2.16, y=1.05, label="Optimal adaptation", alpha=0.5) +
+  geom_text(data=summarized_d %>%
+              filter(base_task_toe == "eval") %>%
+              group_by(mapping_toe) %>%
+              summarize(text_pos = mean(unadapted_variance_explained_vs_zeros) + 0.06),
+            aes(y=text_pos), label="No adaptation", alpha=0.5, position=position_nudge(x=0.165)) +
+  scale_y_continuous(limits = c(0., NA), breaks = c(0., 0.5, 1.), labels = c("0%", "50%", "100%")) +
+  scale_color_manual(values=c("#984ea3", "#ff7f00")) +
+  guides(color=F) +
+  labs(x = "Meta-mapping trained or new",
+       y = "Evaluation performance (%)")
+  
+
+ggsave("../metamapping_paper/figures/polynomials_adaptation.png", width=4, height=3)
+```
