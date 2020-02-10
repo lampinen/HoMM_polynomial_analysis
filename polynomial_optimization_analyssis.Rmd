@@ -7,6 +7,7 @@ output: html_document
 ```{r}
 library(tidyverse)
 library(Hmisc)
+library(boot)
 ```
 
 # data loading
@@ -166,15 +167,78 @@ ggplot(loss_d %>%
 ggsave("../../psych/dissertation/5-timescales/figures/polynomial_optimization_cumulative_regret.png", width=6, height=4)
 ```
 ```{r}
-loss_d %>%
+intermediate_data = loss_d %>%
   filter(train_or_eval == "eval",
          !is.na(loss),
          init_type != "untrained") %>%
   group_by(init_type, run, task) %>%
   summarise(regret_int=sum(loss)) %>%
   group_by(init_type, run) %>%
-  summarise(mean_lri=mean(regret_int, na.rm=T)) %>%
+  summarise(mean_lri=mean(regret_int, na.rm=T)) 
+
+intermediate_data %>%
   group_by(init_type) %>%
   summarise(mean_lri=mean(mean_lri))
 ```
 
+```{r}
+set.seed(0)  # reproducibility
+CI_data = intermediate_data %>%
+  group_by(init_type) %>%
+  do(result=boot.ci(boot(., function(x, inds) {return(mean(x[inds,]$mean_lri))}, R=5000))) %>%
+  mutate(CI_low=result$percent[4], CI_high=result$percent[5])
+CI_data
+```
+
+## MM paper plots
+
+
+```{r}
+ggplot(loss_d %>%
+         filter(train_or_eval == "eval") %>%
+         mutate(init_type=factor(init_type, levels=c("guess", "trained_centroid", "arbitrary_train_task", "random_init", "untrained"), labels=c("Meta-mapping output", "Centroid of tasks", "Arbitrary train task", "Random vector", "Untrained model"))),
+       aes(x=epoch, y=loss, color=init_type)) +
+  geom_line(stat="summary",
+            fun.y="mean",
+            na.rm=T,
+            size = 2) +
+  geom_line(aes(group=interaction(run, init_type)),
+            stat="summary",
+            fun.y="mean",
+            na.rm=T,
+            alpha=0.2) +
+  geom_hline(yintercept=log(chance), alpha=0.5, linetype=2) +
+  scale_color_manual(values=c("#e41a1c", "#ff7f00", "#984ea3", "#477ec8", "#4daf4a")) +
+  annotate("text", x=240, y=log(chance) - 1, alpha=0.5, label="Chance") +
+  labs(x="Epoch (training task embeddings on new data)", y="Loss on new tasks") +
+  guides(color=guide_legend(title="")) +
+  scale_y_log10(breaks=c(1e-02, 1e-01, 1, 1e1, 1e2), labels = c(0.01, 0.1, 1, 10, 100)) +
+  theme(legend.position=c(0.8, 0.875),
+        legend.key.size = unit(0.5, 'lines'))
+
+ggsave("../metamapping_paper/figures/optimization_curves.png", width=4, height=3)
+```
+
+```{r}
+ggplot(loss_d %>%
+         filter(train_or_eval == "eval",
+                !is.na(loss),
+                init_type != "untrained") %>%
+         group_by(init_type, run, task) %>%
+         summarise(regret_int=sum(loss)) %>%
+         group_by(init_type, run) %>%
+         summarise(mean_lri=mean(regret_int, na.rm=T)) %>%
+         ungroup() %>%
+         mutate(init_type=factor(init_type, levels=c("guess", "trained_centroid", "arbitrary_train_task", "random_init", "untrained"), labels=c("Meta-mapping\noutput", "Centroid\nof tasks", "Arbitrary\ntrain task", "Random\nvector", "Untrained model"))),
+       aes(x=init_type, y=mean_lri, fill=init_type)) +
+  geom_bar(stat="summary",
+           fun.y="mean") +
+  geom_errorbar(stat="summary",
+                fun.data="mean_cl_boot",
+                width=0.5) +
+  scale_fill_manual(values=c("#e41a1c", "#ff7f00", "#984ea3", "#477ec8", "#4daf4a")) +
+  labs(x="Task representation initialization", y="Mean cumulative loss on new task") +
+  guides(fill=F)
+
+ggsave("../metamapping_paper/figures/optimization_regret.png", width=4, height=3)
+```
