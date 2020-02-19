@@ -171,14 +171,6 @@ meta_summarized_baselines = meta_baseline_d %>%
 ```
 
 
-dummy: remove once we have run baselines for all runs
-```{r}
-meta_dummy_summarized_baselines = bind_rows(
-  meta_summarized_baselines,
-  meta_summarized_baselines %>% mutate(run = 2))
-
-```
-
 ```{r}
 summarized_d = meta_true_d %>%
   filter(run_type == "polynomials_results") %>%
@@ -187,7 +179,7 @@ summarized_d = meta_true_d %>%
   group_by(run, mapping_toe, base_task_toe) %>%
   summarise(mean_loss = mean(loss, na.rm=T)) %>%
   ungroup() %>%
-  inner_join(meta_dummy_summarized_baselines) %>%
+  inner_join(meta_summarized_baselines) %>%
   mutate_at(vars(contains("toe")), function(x) str_extract(x, "train|eval")) %>%
   mutate(variance_explained_vs_zeros = (zeros_loss - mean_loss) / zeros_loss,
          unadapted_variance_explained_vs_zeros = (zeros_loss - unadapted_loss) / zeros_loss) %>%
@@ -230,3 +222,96 @@ ggplot(summarized_d %>%
 
 ggsave("../metamapping_paper/figures/polynomials_adaptation.png", width=4, height=3)
 ```
+
+```{r}
+summarized_d %>%
+  filter(base_task_toe == "eval") %>%
+  group_by(mapping_toe) %>%
+  do(results1=mean_cl_boot(.$variance_explained_vs_zeros),
+     results2=mean_cl_boot(.$unadapted_variance_explained_vs_zeros)) %>%
+  summarize(performance=results1$y,
+            performance95min=results1$ymin,
+            performance95max=results1$ymax,
+            unadapted=results2$y,
+            unadapted95min=results2$ymin,
+            unadapted95max=results2$ymax,
+            )
+```
+
+# conditioned vs hyper plot
+
+
+```{r}
+cvh_summarized_d = meta_true_d %>%
+  group_by(run, run_type) %>%
+  filter(epoch == max(epoch)) %>%
+  group_by(run, run_type, mapping_toe, base_task_toe) %>%
+  summarise(mean_loss = mean(loss, na.rm=T)) %>%
+  ungroup() %>%
+  inner_join(meta_summarized_baselines) %>%
+  mutate_at(vars(contains("toe")), function(x) str_extract(x, "train|eval")) %>%
+  mutate(variance_explained_vs_zeros = (zeros_loss - mean_loss) / zeros_loss,
+         unadapted_variance_explained_vs_zeros = (zeros_loss - unadapted_loss) / zeros_loss) %>%
+  mutate(mapping_toe = factor(mapping_toe, levels=c("train", "eval"),
+                              labels=c("Trained\nmeta-mapping", "New\nmeta-mapping")))
+```
+
+```{r}
+ggplot(cvh_summarized_d %>% 
+         filter(base_task_toe == "eval") %>%
+         mutate(run_type = factor(run_type,
+                                  levels=c("polynomials_results", "polynomials_results_non_hyper"),
+                                  labels=c("HyperNetwork\narchitecture",
+                                           "Task concatenated\narchitecture"))),
+       aes(x=mapping_toe, y=variance_explained_vs_zeros,
+           color=run_type)) +
+  geom_errorbar(stat="summary",
+                fun.data="mean_cl_boot",
+                width=0.25,
+                size=1,
+                position=position_dodge(width=0.4)) +
+  geom_point(stat="summary",
+             fun.y="mean",
+             size=3,
+             position=position_dodge(width=0.4)) +
+  # geom_spoke(aes(x=mapping_toe, y=unadapted_variance_explained_vs_zeros, angle=0, radius=1),
+  #            stat="summary",
+  #            fun.y="mean",
+  #            linetype=3,# alpha=0.5, 
+  #            size=1,
+  #            position=position_nudge(x=-0.5)) +
+  geom_hline(yintercept=1., alpha=0.5,
+             linetype=2) +
+  annotate("text", x=2.16, y=1.01, label="Optimal adaptation", alpha=0.5) +
+  # geom_text(data=cvh_summarized_d %>%
+  #             filter(base_task_toe == "eval") %>%
+  #             group_by(mapping_toe, run_type) %>%
+  #             summarize(text_pos = mean(unadapted_variance_explained_vs_zeros) + 0.06),
+  #           aes(y=text_pos, color=), label="No adaptation", alpha=0.5, position=position_nudge(x=0.165)) +
+  scale_y_continuous(limits = c(0.8, NA), breaks = c(0.8, 0.9, 1.), labels = c("80%", "90%", "100%")) +
+scale_color_manual(values=c("#e41a1c", "#841010")) +
+  guides(color=guide_legend(title=NULL)) +
+  labs(x = "Architecture",
+       y = "Evaluation performance (%)") +
+  theme(legend.position=c(0.8, 0.75))
+
+
+ggsave("../metamapping_paper/figures/conditioned_vs_hyper_polynomials.png", width=4, height=3)
+```
+
+```{r}
+cvh_summarized_d %>%
+  filter(base_task_toe == "eval") %>%
+  group_by(mapping_toe, run_type) %>%
+  do(results1=mean_cl_boot(.$variance_explained_vs_zeros),
+     results2=mean_cl_boot(.$unadapted_variance_explained_vs_zeros)) %>%
+  mutate(performance=results1$y,
+            performance95min=results1$ymin,
+            performance95max=results1$ymax,
+            unadapted=results2$y,
+            unadapted95min=results2$ymin,
+            unadapted95max=results2$ymax,
+            ) %>%
+  select(-starts_with("results"))
+```
+
