@@ -372,7 +372,7 @@ ggplot(mm_summarized_d %>%
              linetype=3) +
   geom_text(data=data.frame(base_task_toe="Evaluation"), 
             aes(color=NULL),
-            x=3.67, y=1.1, color="black",
+            x=3.67, y=1.06, color="black",
             label="Optimal adaptation", alpha=0.5) +
   # geom_text(data=mm_summarized_d %>%
   #             filter(base_task_toe == "eval") %>%
