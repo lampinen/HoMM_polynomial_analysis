@@ -1,3 +1,3 @@
-# HoMM_persistent
+# HoMM Polynomials
 
-Analyzing the effect of persistent reps on HoMM results.
+Analyses of HoMM (<https://github.com/lampinen/HoMM>) in the polynomial setting.
