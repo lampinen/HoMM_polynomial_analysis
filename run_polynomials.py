@@ -11,7 +11,7 @@ import polynomials
 
 run_config = default_run_config.default_run_config
 run_config.update({
-    "output_dir": "optimization_results/updated/",
+    "output_dir": "rep_results/",
     "run_offset": 0,
     "num_runs": 5,
     
@@ -23,8 +23,8 @@ run_config.update({
     "poly_coeff_sd": 2.5,
     "point_val_range": 1,
 
-    "num_epochs": 1000,
-    "num_optimization_epochs": 250,
+    "num_epochs": 5000,
+    #"num_optimization_epochs": 250,
 
     "meta_add_vals": [-3, -1, 1, 3],
     "meta_mult_vals": [-3, -1, 3],
@@ -151,6 +151,7 @@ for run_i in range(run_config["run_offset"], run_config["run_offset"] + run_conf
 
     model = poly_HoMM_model(run_config=run_config)
     model.run_training()
-    model.guess_embeddings_and_optimize(num_optimization_epochs=run_config["num_optimization_epochs"], eval_every=2, random_init_scale=0.1)
+    model.save_task_embeddings(model.filename_prefix + "task_representations.csv")
+    #model.guess_embeddings_and_optimize(num_optimization_epochs=run_config["num_optimization_epochs"], eval_every=2, random_init_scale=0.1)
 
     tf.reset_default_graph()
