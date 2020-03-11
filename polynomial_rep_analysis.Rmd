@@ -1,0 +1,111 @@
+---
+title: "Polynomials tsne"
+author: "Andrew Lampinen"
+date: "March 11, 2020"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(ggpubr)
+library(tsne)
+```
+
+# data loading
+
+```{r}
+results_dir = "./polynomial_rep_results"
+num_runs = 5
+```
+
+
+```{r message=FALSE, warning=FALSE}
+d = replicate(num_runs, data.frame())
+for (run_i in 0:(num_runs-1)) {
+  this_d = read_csv(sprintf("%s/run%i_task_representations.csv", results_dir, run_i)) 
+  this_d = this_d %>%
+    mutate(run = run_i)# %>%
+    # gather(task, value, -run, -dimension) %>%
+    # separate(task, c("task", "base_or_meta"), sep=":") %>%
+    # mutate(base_or_meta = gsub("_[0-9]+", "", base_or_meta)) # some tasks are duplicated because of float precision.
+    
+  d[[run_i + 1]] = this_d
+}
+```
+
+# PCA plots by run
+
+```{r}
+theme_set(theme_classic())
+```
+
+
+```{r}
+runs_to_plot = 4  # we plot a subset of the runs to make laying out the plots easier, results look similar across all
+overall_plots = replicate(runs_to_plot, ggplot())
+constant_poly_plots = replicate(runs_to_plot, ggplot())
+for (run_i in 1:runs_to_plot) {
+  this_d = d[[run_i]]
+  pcs = prcomp(this_d %>%
+                 select(-dimension, -run), center=T, scale=T)
+  pc_d = data.frame(pcs$rotation)
+  pc_d$task = row.names(pc_d)
+  pc_d = pc_d %>% 
+    separate(task, c("task", "base_or_meta"), sep=":") %>%
+    mutate(base_or_meta = gsub("_[0-9]+", "", base_or_meta), # some tasks are duplicated because of float precision.
+           meta_task_type = str_extract("mult|add|perm|square", task)) %>%
+    rowwise() %>%
+    mutate(vars_relevant=ifelse(base_or_meta == "base",
+                                str_extract_all(task, "X[0-4]") %>%
+                                  unlist %>% unique %>% sort %>%
+                                  paste(collapse=""),
+                                NA)) %>%
+    ungroup() %>%
+    mutate(num_vars_relevant=str_length(vars_relevant)/2,
+           base_or_meta = case_when(base_or_meta == "base" ~ "Base (polynomial)",
+                                    base_or_meta == "meta_class" ~ "Meta Class.",
+                                    base_or_meta == "meta_map" ~ "Meta Mapping",
+                                    T ~ base_or_meta
+           ))
+  
+  overall_plots[[run_i]] = ggplot(pc_d, aes(x=PC1, y=PC2, color=num_vars_relevant, shape=base_or_meta, size=base_or_meta)) +
+    geom_point() +
+    #scale_color_brewer(palette="Dark2") + 
+    labs(x="PC 1", y="PC 2") +
+#    scale_color_brewer(palette="Purples") +
+    guides(color=guide_legend(title="Number of\nrelevant variables"),
+           shape=guide_legend(title="Type"),
+           size=guide_legend(title="Type"))
+  
+  constant_poly_plots[[run_i]] = ggplot(pc_d %>%
+           filter(num_vars_relevant == 0) %>%
+           mutate(constant_val = as.numeric(task),
+                  compressed_constant_val = ifelse(constant_val > 0,
+                                                   sqrt(constant_val),
+                                                   -sqrt(-constant_val))), 
+         aes(x=PC1, y=PC2, color=compressed_constant_val)) +
+    geom_point() +
+    scale_color_gradient2() +#breaks=c(-4, -2, 0, 2, 4, 6),
+                          #labels=c(-16, -4, 0, 4, 16, 36)) + 
+    labs(x="PC 1", y="PC 2") +
+    guides(color=guide_colorbar(title="Value\n(sqrt)"))
+}
+```
+
+
+```{r}
+ggarrange(overall_plots[[1]], overall_plots[[2]], overall_plots[[3]], overall_plots[[4]],  # plotlist arg isn't working and I don't want to debug it
+          labels=sprintf("Run %i", 0:(runs_to_plot-1)),
+          label.x=0.75,
+          common.legend=T)
+
+ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/overall_PCA.png", width=8, height=8)
+```
+
+```{r}
+ggarrange(constant_poly_plots[[1]], constant_poly_plots[[2]], constant_poly_plots[[3]], constant_poly_plots[[4]], 
+          labels=sprintf("Run %i", 0:(runs_to_plot-1)),
+          label.x=0.75)
+
+ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/constant_poly_PCA.png", width=8, height=6)
+```
