@@ -44,6 +44,8 @@ theme_set(theme_classic())
 runs_to_plot = 4  # we plot a subset of the runs to make laying out the plots easier, results look similar across all
 overall_plots = replicate(runs_to_plot, ggplot())
 constant_poly_plots = replicate(runs_to_plot, ggplot())
+single_var_poly_plots = replicate(runs_to_plot, ggplot())
+meta_mapping_plots = replicate(runs_to_plot, ggplot())
 for (run_i in 1:runs_to_plot) {
   this_d = d[[run_i]]
   pcs = prcomp(this_d %>%
@@ -53,7 +55,7 @@ for (run_i in 1:runs_to_plot) {
   pc_d = pc_d %>% 
     separate(task, c("task", "base_or_meta"), sep=":") %>%
     mutate(base_or_meta = gsub("_[0-9]+", "", base_or_meta), # some tasks are duplicated because of float precision.
-           meta_task_type = str_extract("mult|add|perm|square", task)) %>%
+           meta_task_type = str_extract(task, "mult|add|perm|square")) %>%
     rowwise() %>%
     mutate(vars_relevant=ifelse(base_or_meta == "base",
                                 str_extract_all(task, "X[0-4]") %>%
@@ -68,6 +70,7 @@ for (run_i in 1:runs_to_plot) {
                                     T ~ base_or_meta
            ))
   
+  # overall: base + meta
   overall_plots[[run_i]] = ggplot(pc_d, aes(x=PC1, y=PC2, color=num_vars_relevant, shape=base_or_meta, size=base_or_meta)) +
     geom_point() +
     #scale_color_brewer(palette="Dark2") + 
@@ -77,6 +80,7 @@ for (run_i in 1:runs_to_plot) {
            shape=guide_legend(title="Type"),
            size=guide_legend(title="Type"))
   
+  # constant polynomials organized by value
   constant_poly_plots[[run_i]] = ggplot(pc_d %>%
            filter(num_vars_relevant == 0) %>%
            mutate(constant_val = as.numeric(task),
@@ -89,6 +93,40 @@ for (run_i in 1:runs_to_plot) {
                           #labels=c(-16, -4, 0, 4, 16, 36)) + 
     labs(x="PC 1", y="PC 2") +
     guides(color=guide_colorbar(title="Value\n(sqrt)"))
+  
+  # single variable polynomials
+  single_var_poly_plots[[run_i]] = ggplot(pc_d %>%
+           filter(num_vars_relevant == 1), 
+         aes(x=PC1, y=PC2, color=vars_relevant)) +
+    geom_point() +
+    scale_color_brewer(palette="Set2") +
+    labs(x="PC 1", y="PC 2") +
+    guides(color=guide_legend(title="Variable"))
+  
+  # meta-mapping only PCA
+  pcs = prcomp(this_d %>%
+                 select(contains("meta_map")), center=T, scale=T)
+  pc_d = data.frame(pcs$rotation)
+  pc_d$task = row.names(pc_d)
+  pc_d = pc_d %>% 
+    separate(task, c("task", "base_or_meta"), sep=":") %>%
+    mutate(meta_task_type = str_extract(task, "mult|add|perm|square"),
+           task = case_when(meta_task_type %in% c("mult", "add") ~ str_extract(task, "[a-z0-9_-]+"),
+                            meta_task_type == "perm" ~ paste("perm", str_extract(task, "[0-3]+")),
+                            T ~ task)) %>%
+    mutate(base_or_meta = case_when(base_or_meta == "base" ~ "Base (polynomial)",
+                                    base_or_meta == "meta_class" ~ "Meta Class.",
+                                    base_or_meta == "meta_map" ~ "Meta Mapping",
+                                    T ~ base_or_meta
+           ))
+  
+  meta_mapping_plots[[run_i]] = ggplot(pc_d, aes(x=PC1, y=PC2, color=meta_task_type)) +
+#    geom_point(size=1.5) +
+    geom_text(aes(label=task),
+              position=position_nudge(x=0.05)) +
+    scale_color_brewer(palette="Set1") + 
+    labs(x="PC 1", y="PC 2") +
+    guides(color=F)
 }
 ```
 
@@ -100,6 +138,7 @@ ggarrange(overall_plots[[1]], overall_plots[[2]], overall_plots[[3]], overall_pl
           common.legend=T)
 
 ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/overall_PCA.png", width=8, height=8)
+ggsave("../metamapping_paper/figures/polynomial_reps/overall_PCA.png", width=8, height=8)
 ```
 
 ```{r}
@@ -108,4 +147,25 @@ ggarrange(constant_poly_plots[[1]], constant_poly_plots[[2]], constant_poly_plot
           label.x=0.75)
 
 ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/constant_poly_PCA.png", width=8, height=6)
+ggsave("../metamapping_paper/figures/polynomial_reps/constant_poly_PCA.png", width=8, height=6)
+```
+
+```{r}
+ggarrange(single_var_poly_plots[[1]], single_var_poly_plots[[2]], single_var_poly_plots[[3]], single_var_poly_plots[[4]], 
+          labels=sprintf("Run %i", 0:(runs_to_plot-1)),
+          label.x=0.425,
+          common.legend=T)
+
+ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/single_var_poly_PCA.png", width=8, height=8)
+```
+
+```{r}
+ggarrange(meta_mapping_plots[[1]], meta_mapping_plots[[2]], meta_mapping_plots[[3]], meta_mapping_plots[[4]], 
+          labels=sprintf("Run %i", 0:(runs_to_plot-1)),
+          label.x=0.425,
+          common.legend=T)
+
+ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/meta_mapping_PCA.png", width=8, height=8)
+ggsave("../metamapping_paper/figures/polynomial_reps/meta_mapping_PCA.png", width=8, height=8)
+
 ```
