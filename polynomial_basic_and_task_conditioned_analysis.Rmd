@@ -342,15 +342,21 @@ mm_summarized_d = meta_true_d %>%
   mutate_at(vars(contains("toe")), function(x) str_extract(x, "train|eval")) %>%
   mutate(variance_explained_vs_zeros = (zeros_loss - mean_loss) / zeros_loss,
          unadapted_variance_explained_vs_zeros = (zeros_loss - unadapted_loss) / zeros_loss) %>%
+  gather(result_type, value, contains("variance_explained_vs_zeros")) %>%
   mutate(mapping_toe = factor(mapping_toe, levels=c("train", "eval"),
-                              labels=c("Trained\nmeta-mapping", "New\nmeta-mapping")))
+                              labels=c("Trained", "New")),
+         result_type = factor(result_type, levels=c("variance_explained_vs_zeros", "unadapted_variance_explained_vs_zeros"),
+                              labels=c("HoMM", "No adaptation\ncontrol")),
+         )
 ```
 
 ```{r}
 ggplot(mm_summarized_d %>%
          filter(base_task_toe == "eval"),
-       aes(x=meta_task_type, y=variance_explained_vs_zeros,
-           color=mapping_toe)) +
+       aes(x=meta_task_type, y=value,
+           color=mapping_toe,# linetype=result_type, 
+#           alpha=result_type,
+           shape=result_type)) +
   geom_errorbar(stat="summary",
                 fun.data="mean_cl_boot",
                 width=0.25,
@@ -358,20 +364,19 @@ ggplot(mm_summarized_d %>%
                 position=position_dodge(0.5)) +
   geom_point(stat="summary",
              fun.y="mean",
-             size=1.5,
+             size=2,
              position=position_dodge(0.5)) +
-  geom_spoke(aes(y=unadapted_variance_explained_vs_zeros, angle=0, radius=0.95),
-             stat="summary",
-             fun.y="mean",
-             linetype=3,# alpha=0.5, 
-             size=1,
-             position=position_nudge(x=-0.5)) +
+  # geom_spoke(aes(y=unadapted_variance_explained_vs_zeros, angle=0, radius=0.95),
+  #            stat="summary",
+  #            fun.y="mean",
+  #            linetype=3,# alpha=0.5, 
+  #            size=1,
+  #            position=position_nudge(x=-0.5)) +
   geom_hline(yintercept=1., alpha=0.5,
              linetype=2) +
   geom_hline(yintercept=0., alpha=0.5,
              linetype=3) +
-  geom_text(data=data.frame(base_task_toe="Evaluation"), 
-            aes(color=NULL),
+  annotate(geom="text",
             x=3.67, y=1.06, color="black",
             label="Optimal adaptation", alpha=0.5) +
   # geom_text(data=mm_summarized_d %>%
@@ -381,7 +386,11 @@ ggplot(mm_summarized_d %>%
   #           aes(y=text_pos), label="No adaptation", alpha=0.5, position=position_nudge(x=0.165)) +
   scale_y_continuous(limits = c(NA, 1.08), breaks = c(0., 0.5, 1.), labels = c("0%", "50%", "100%")) +
   scale_color_manual(values=c("#984ea3", "#ff7f00")) +
-  guides(color=guide_legend(title=NULL)) +
+#  scale_alpha_manual(values=c(1., 0.5)) +
+#  scale_linetype_manual(values=c(1,3)) +
+  guides(color=guide_legend(title="Meta-mapping"),
+         #linetype=guide_legend(title="Result type"),
+         shape=guide_legend(title="Result type")) +
   labs(x = "Meta-mapping type",
        y = "Evaluation performance (%)")
   
