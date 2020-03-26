@@ -454,6 +454,7 @@ ggplot(mcl_summarized_d %>%
   #           aes(y=text_pos, color=), label="No adaptation", alpha=0.5, position=position_nudge(x=0.165)) +
   scale_y_continuous(limits = c(0.8, NA), breaks = c(0.8, 0.9, 1.), labels = c("80%", "90%", "100%")) +
 scale_color_manual(values=c("#e41a1c", "#fcbba1")) +
+  
   guides(color=guide_legend(title=NULL)) +
   labs(x = "Meta-mapping trained or held-out",
        y = "Evaluation performance (%)") +

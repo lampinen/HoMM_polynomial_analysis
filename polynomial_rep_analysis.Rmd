@@ -46,6 +46,8 @@ overall_plots = replicate(runs_to_plot, ggplot())
 constant_poly_plots = replicate(runs_to_plot, ggplot())
 single_var_poly_plots = replicate(runs_to_plot, ggplot())
 meta_mapping_plots = replicate(runs_to_plot, ggplot())
+meta_mapping_plots_34 = replicate(runs_to_plot, ggplot())
+perm_mapping_plots = replicate(runs_to_plot, ggplot())
 for (run_i in 1:runs_to_plot) {
   this_d = d[[run_i]]
   pcs = prcomp(this_d %>%
@@ -127,6 +129,40 @@ for (run_i in 1:runs_to_plot) {
     scale_color_brewer(palette="Set1") + 
     labs(x="PC 1", y="PC 2") +
     guides(color=F)
+  
+  meta_mapping_plots_34[[run_i]] = ggplot(pc_d, aes(x=PC3, y=PC4, color=meta_task_type)) +
+#    geom_point(size=1.5) +
+    geom_text(aes(label=task),
+              position=position_nudge(x=0.05)) +
+    scale_color_brewer(palette="Set1") + 
+    labs(x="PC 3", y="PC 4") +
+    guides(color=F)
+
+  # perm only PCA
+  pcs = prcomp(this_d %>%
+                 select(contains("perm")), center=T, scale=T)
+  pc_d = data.frame(pcs$rotation)
+  pc_d$task = row.names(pc_d)
+  pc_d = pc_d %>% 
+    separate(task, c("task", "base_or_meta"), sep=":") %>%
+    mutate(meta_task_type = str_extract(task, "mult|add|perm|square"),
+           task = case_when(meta_task_type %in% c("mult", "add") ~ str_extract(task, "[a-z0-9_-]+"),
+                            meta_task_type == "perm" ~ paste("perm", str_extract(task, "[0-3]+")),
+                            T ~ task)) %>%
+    mutate(base_or_meta = case_when(base_or_meta == "base" ~ "Base (polynomial)",
+                                    base_or_meta == "meta_class" ~ "Meta Class.",
+                                    base_or_meta == "meta_map" ~ "Meta Mapping",
+                                    T ~ base_or_meta
+           ))
+  
+  perm_mapping_plots[[run_i]] = ggplot(pc_d, aes(x=PC1, y=PC2, color=meta_task_type)) +
+#    geom_point(size=1.5) +
+    geom_text(aes(label=task),
+              position=position_nudge(x=0.05)) +
+    scale_color_brewer(palette="Set1", drop=F) + 
+    labs(x="PC 1", y="PC 2") +
+    guides(color=F)
+  
 }
 ```
 
@@ -167,5 +203,28 @@ ggarrange(meta_mapping_plots[[1]], meta_mapping_plots[[2]], meta_mapping_plots[[
 
 ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/meta_mapping_PCA.png", width=8, height=8)
 ggsave("../metamapping_paper/figures/polynomial_reps/meta_mapping_PCA.png", width=8, height=8)
+
+```
+
+```{r}
+ggarrange(meta_mapping_plots_34[[1]], meta_mapping_plots_34[[2]], meta_mapping_plots_34[[3]], meta_mapping_plots_34[[4]], 
+          labels=sprintf("Run %i", 0:(runs_to_plot-1)),
+          label.x=0.425,
+          common.legend=T)
+
+ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/meta_mapping_PCA_34.png", width=8, height=8)
+#ggsave("../metamapping_paper/figures/polynomial_reps/meta_mapping_PCA_34.png", width=8, height=8)
+
+```
+
+
+```{r}
+ggarrange(perm_mapping_plots[[1]], perm_mapping_plots[[2]], perm_mapping_plots[[3]], perm_mapping_plots[[4]], 
+          labels=sprintf("Run %i", 0:(runs_to_plot-1)),
+          label.x=0.425,
+          common.legend=T)
+
+ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/perm_mapping_PCA.png", width=8, height=8)
+#ggsave("../metamapping_paper/figures/polynomial_reps/meta_mapping_PCA.png", width=8, height=8)
 
 ```
