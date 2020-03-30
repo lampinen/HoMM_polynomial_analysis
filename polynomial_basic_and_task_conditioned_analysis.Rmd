@@ -453,7 +453,7 @@ ggplot(mcl_summarized_d %>%
   #             summarize(text_pos = mean(unadapted_variance_explained_vs_zeros) + 0.06),
   #           aes(y=text_pos, color=), label="No adaptation", alpha=0.5, position=position_nudge(x=0.165)) +
   scale_y_continuous(limits = c(0.8, NA), breaks = c(0.8, 0.9, 1.), labels = c("80%", "90%", "100%")) +
-scale_color_manual(values=c("#e41a1c", "#fcbba1")) +
+  scale_color_manual(values=c("#e41a1c", "#fcbba1")) +
   
   guides(color=guide_legend(title=NULL)) +
   labs(x = "Meta-mapping trained or held-out",
@@ -462,6 +462,27 @@ scale_color_manual(values=c("#e41a1c", "#fcbba1")) +
 
 
 ggsave("../metamapping_paper/figures/metaclass_lesion_polynomials.png", width=4, height=3)
+ggsave("../../psych/dissertation/2-HoMM/figures/metaclass_lesion_polynomials.png", width=5, height=3)
+```
+```{r}
+set.seed(0)  # reproducibility
+mcl_summarized_d %>%
+  filter(base_task_toe == "eval") %>%
+  group_by(run_type, mapping_toe) %>%
+  do(results=mean_cl_boot(.$variance_explained_vs_zeros, na.rm=T)) %>%
+  mutate(mean=results$y,
+         CIlow=results$ymin,
+         CIhigh=results$ymax)
 ```
 
+```{r}
+t.test(variance_explained_vs_zeros ~ run_type, mcl_summarized_d %>%
+         filter(base_task_toe == "eval",
+                mapping_toe == "Trained\nmeta-mapping"), paired=T)
+```
 
+```{r}
+t.test(variance_explained_vs_zeros ~ run_type, mcl_summarized_d %>%
+         filter(base_task_toe == "eval",
+                mapping_toe == "New\nmeta-mapping"), paired=T)
+```
