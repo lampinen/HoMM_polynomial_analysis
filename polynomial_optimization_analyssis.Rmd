@@ -335,3 +335,28 @@ g +
 ggsave("../metamapping_paper/figures/polynomial_optimization_tcnh_cumulative_regret.png", width=4, height=3)
 
 ```
+
+```{r}
+intermediate_data = loss_d %>%
+  filter(train_or_eval == "eval",
+         run_type != "untrained",
+         !is.na(loss),
+         init_type %in% c("guess", "trained_centroid")) %>%
+  group_by(init_type, run_type, run, task) %>%
+  summarise(regret_int=sum(loss)) %>%
+  group_by(init_type, run_type, run) %>%
+  summarise(mean_lri=mean(regret_int, na.rm=T)) 
+
+intermediate_data %>%
+  group_by(init_type) %>%
+  summarise(mean_lri=mean(mean_lri))
+```
+
+```{r}
+set.seed(0)  # reproducibility
+CI_data = intermediate_data %>%
+  group_by(init_type) %>%
+  do(result=boot.ci(boot(., function(x, inds) {return(mean(x[inds,]$mean_lri))}, R=5000))) %>%
+  mutate(CI_low=result$percent[4], CI_high=result$percent[5])
+CI_data
+```
