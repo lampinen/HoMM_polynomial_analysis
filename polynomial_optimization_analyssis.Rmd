@@ -14,7 +14,7 @@ library(boot)
 
 ```{r}
 parent_dir = "optimization_results"
-subdirs = c("updated", "untrained_baseline")
+subdirs = c("updated", "untrained_baseline", "tcnh")
 num_runs = 5
 ```
 
@@ -104,7 +104,7 @@ ggplot(loss_d %>%
 ```
 ```{r}
 loss_d = loss_d %>%
-  filter(run_type == "updated" | init_type == "arbitrary_train_task") %>%
+  filter(run_type != "untrained_baseline" | init_type == "arbitrary_train_task") %>%
   mutate(init_type = ifelse(run_type == "untrained_baseline", "untrained", init_type))
 ```
 
@@ -121,7 +121,8 @@ chance
 
 ```{r}
 ggplot(loss_d %>%
-         filter(train_or_eval == "eval") %>%
+         filter(train_or_eval == "eval",
+                run_type != "tcnh") %>%
          mutate(init_type=factor(init_type, levels=c("guess", "trained_centroid", "arbitrary_train_task", "random_init", "untrained"), labels=c("Meta-mapping output", "Centroid of tasks", "Arbitrary train task", "Random vector", "Untrained model"))),
        aes(x=epoch, y=loss, color=init_type)) +
   geom_line(stat="summary",
@@ -146,6 +147,7 @@ ggsave("../../psych/dissertation/5-timescales/figures/polynomial_optimization_cu
 ```{r}
 ggplot(loss_d %>%
          filter(train_or_eval == "eval",
+                run_type != "tcnh",
                 !is.na(loss),
                 init_type != "untrained") %>%
          group_by(init_type, run, task) %>%
@@ -169,6 +171,7 @@ ggsave("../../psych/dissertation/5-timescales/figures/polynomial_optimization_cu
 ```{r}
 intermediate_data = loss_d %>%
   filter(train_or_eval == "eval",
+         run_type != "tcnh",
          !is.na(loss),
          init_type != "untrained") %>%
   group_by(init_type, run, task) %>%
@@ -195,7 +198,8 @@ CI_data
 
 ```{r}
 ggplot(loss_d %>%
-         filter(train_or_eval == "eval") %>%
+         filter(train_or_eval == "eval",
+                run_type != "tcnh") %>%
          mutate(init_type=factor(init_type, levels=c("guess", "trained_centroid", "arbitrary_train_task", "random_init", "untrained"), labels=c("Meta-mapping output", "Centroid of tasks", "Arbitrary train task", "Random vector", "Untrained model"))),
        aes(x=epoch, y=loss, color=init_type)) +
   geom_line(stat="summary",
@@ -222,6 +226,7 @@ ggsave("../metamapping_paper/figures/optimization_curves.png", width=4, height=3
 ```{r}
 ggplot(loss_d %>%
          filter(train_or_eval == "eval",
+                run_type != "tcnh", 
                 !is.na(loss),
                 init_type != "untrained") %>%
          group_by(init_type, run, task) %>%
@@ -241,4 +246,92 @@ ggplot(loss_d %>%
   guides(fill=F)
 
 ggsave("../metamapping_paper/figures/optimization_regret.png", width=4, height=3)
+```
+
+# Hyper vs TCNH
+
+```{r}
+g = ggplot(loss_d %>%
+             filter(train_or_eval == "eval",
+                    run_type != "untrained",
+                    init_type %in% c("guess", "trained_centroid")) %>%
+             mutate(init_type=factor(init_type, levels=c("guess", "trained_centroid", "arbitrary_train_task", "random_init", "untrained"), labels=c("Meta-mapping\noutput", "Centroid of\ntrained tasks", "Arbitrary train task", "Random vector", "Untrained model")),
+                  run_type = factor(run_type,
+                                    levels=c("updated", "tcnh"),
+                                    labels=c("HyperNetwork\narchitecture",
+                                             "Task concatenated\narchitecture"))
+           ),
+       aes(x=epoch, y=loss, color=run_type, linetype=init_type)) +
+  geom_line(stat="summary",
+            fun.y="mean",
+            na.rm=T,
+            size = 2) +
+  geom_line(aes(group=interaction(run, run_type, init_type)),
+            stat="summary",
+            fun.y="mean",
+            na.rm=T,
+            alpha=0.2,
+            show.legend=F) +
+  geom_hline(yintercept=log(chance), alpha=0.5, linetype=2) +
+  scale_color_manual(values=c("#e41a1c", "#841010")) +
+  labs(x="Epoch (training task embeddings on new data)", y="Loss on new tasks") +
+  guides(color=guide_legend(title=NULL),
+         linetype=guide_legend(title=NULL)) +
+  scale_y_log10(breaks=c(1e-02, 1e-01, 1, 1e1, 1e2), labels = c(0.01, 0.1, 1, 10, 100)) +
+  theme(legend.key.width = unit(1,"cm"),
+        legend.key.height = unit(0.75,"cm"))
+
+g  +
+  annotate("text", x=240, y=log(chance) + 1, alpha=0.5, label="Chance")
+ggsave("../../psych/dissertation/5-timescales/figures/polynomial_optimization_tcnh_curves.png", width=6, height=4)
+
+g +
+  annotate("text", x=60, y=log(chance) + 1, alpha=0.5, label="Chance") +
+  theme(legend.position=c(0.8, 0.8),
+        legend.key.size = unit(0.3, 'lines'),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.spacing = unit(0, 'lines'))
+
+ggsave("../metamapping_paper/figures/polynomial_optimization_tcnh_curves.png", width=4, height=3)
+```
+
+```{r}
+g = ggplot(loss_d %>%
+             filter(train_or_eval == "eval",
+                    run_type != "untrained",
+                    !is.na(loss),
+                    init_type %in% c("guess", "trained_centroid")) %>%
+             mutate(run_type = factor(run_type,
+                                      levels=c("updated", "tcnh"),
+                                      labels=c("HyperNetwork\narchitecture",
+                                               "Task concatenated\narchitecture"))) %>%
+             group_by(init_type, run_type, run, task) %>%
+             summarise(regret_int=sum(loss)) %>%
+             group_by(init_type, run_type, run) %>%
+             summarise(mean_lri=mean(regret_int, na.rm=T)) %>%
+             ungroup() %>%
+             mutate(init_type=factor(init_type, levels=c("guess", "trained_centroid", "arbitrary_train_task", "random_init", "untrained"), labels=c("Meta-mapping\noutput", "Centroid\nof tasks", "Arbitrary\ntrain task", "Random\nvector", "Untrained model"))),
+           aes(x=init_type, y=mean_lri, fill=run_type)) +
+  geom_bar(stat="summary",
+           fun.y="mean",
+           position="dodge") +
+  geom_errorbar(stat="summary",
+                fun.data="mean_cl_boot",
+                width=0.5,
+                position=position_dodge(0.9)) +
+  scale_fill_manual(values=c("#e41a1c", "#841010")) +
+  labs(x="Initialization", y="Mean cumulative regret on new task") +
+  guides(fill=guide_legend(title=NULL))
+
+g + 
+  theme(legend.key.size = unit(2, "lines"))
+ggsave("../../psych/dissertation/5-timescales/figures/polynomial_optimization_tcnh_cumulative_regret.png", width=6, height=4)
+
+
+g +
+  theme(legend.position=c(0.3, 0.8),
+        legend.key.size = unit(1.5, 'lines'))
+
+ggsave("../metamapping_paper/figures/polynomial_optimization_tcnh_cumulative_regret.png", width=4, height=3)
+
 ```
