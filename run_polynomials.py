@@ -11,9 +11,9 @@ import polynomials
 
 run_config = default_run_config.default_run_config
 run_config.update({
-    "output_dir": "optimization_results/updated/",
+    "output_dir": "optimization_results/",
     "run_offset": 0,
-    "num_runs": 5,
+    "num_runs": 1,
     
     "num_base_train_tasks": 60, # prior to meta-augmentation
     "num_base_eval_tasks": 40, # prior to meta-augmentation
@@ -23,7 +23,7 @@ run_config.update({
     "poly_coeff_sd": 2.5,
     "point_val_range": 1,
 
-    "num_epochs": 1000,
+    "num_epochs": 5000,
     "num_optimization_epochs": 250,
 
     "meta_add_vals": [-3, -1, 1, 3],
@@ -36,6 +36,16 @@ architecture_config = default_architecture_config.default_architecture_config
 #architecture_config.update({
 #    "train_drop_prob": 0.5,
 #})
+if True:  # enable for tcnh
+    architecture_config.update({
+        "task_conditioned_not_hyper": True,
+    })
+    run_config.update({
+        "output_dir": run_config["output_dir"] + "tcnh/", 
+    })
+
+
+
 if False:  # enable for weight norm 
     architecture_config.update({
         "F_weight_normalization": True,
@@ -151,6 +161,8 @@ for run_i in range(run_config["run_offset"], run_config["run_offset"] + run_conf
 
     model = poly_HoMM_model(run_config=run_config)
     model.run_training()
+    model.save_parameters(model.filename_prefix + "final_checkpoint")
+    #model.save_task_embeddings(model.filename_prefix + "task_representations.csv")
     model.guess_embeddings_and_optimize(num_optimization_epochs=run_config["num_optimization_epochs"], eval_every=2, random_init_scale=0.1)
 
     tf.reset_default_graph()
