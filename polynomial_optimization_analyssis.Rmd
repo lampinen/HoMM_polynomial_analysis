@@ -348,14 +348,14 @@ intermediate_data = loss_d %>%
   summarise(mean_lri=mean(regret_int, na.rm=T)) 
 
 intermediate_data %>%
-  group_by(init_type) %>%
+  group_by(init_type, run_type) %>%
   summarise(mean_lri=mean(mean_lri))
 ```
 
 ```{r}
 set.seed(0)  # reproducibility
 CI_data = intermediate_data %>%
-  group_by(init_type) %>%
+  group_by(init_type, run_type) %>%
   do(result=boot.ci(boot(., function(x, inds) {return(mean(x[inds,]$mean_lri))}, R=5000))) %>%
   mutate(CI_low=result$percent[4], CI_high=result$percent[5])
 CI_data
