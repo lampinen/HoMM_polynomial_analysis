@@ -607,7 +607,7 @@ nh_summarized_d %>%
          CIhigh=results$ymax)
 ```
 
-# plot combining main results + nonhomoiconic
+## plot combining main results + nonhomoiconic
 
 ```{r}
 ggplot(nh_summarized_d %>% 
@@ -669,4 +669,58 @@ ggplot(nh_summarized_d %>%
 
 
 ggsave("../metamapping_paper/figures/polynomials_adaptation_results_with_nonhomm.png", width=4, height=3)
+```
+
+
+## homoiconic vs. nonhomiconic breakdown by type
+
+```{r}
+nh_less_summarized_d = meta_true_d %>%
+  filter(run_type %in% c("polynomials_results", "nonhomoiconic")) %>%
+  mutate(meta_task_type = str_extract(meta_task, "square|add|mult|perm")) %>%
+  group_by(run, run_type) %>%
+  filter(epoch == max(epoch)) %>%
+  group_by(run, run_type, meta_task_type, mapping_toe, base_task_toe) %>%
+  summarise(mean_loss = mean(loss, na.rm=T)) %>%
+  ungroup() %>%
+  inner_join(meta_mm_summarized_baselines) %>%
+  mutate_at(vars(contains("toe")), function(x) str_extract(x, "train|eval")) %>%
+  mutate(variance_explained_vs_zeros = (zeros_loss - mean_loss) / zeros_loss,
+         unadapted_variance_explained_vs_zeros = (zeros_loss - unadapted_loss) / zeros_loss) %>%
+  mutate(mapping_toe = factor(mapping_toe, levels=c("train", "eval"),
+                              labels=c("Trained\nmeta-mapping", "New\nmeta-mapping")))
+```
+
+```{r}
+
+ggplot(nh_less_summarized_d %>% 
+         filter(base_task_toe == "eval") %>%
+         mutate(run_type = factor(run_type,
+                                  levels=c("polynomials_results", "nonhomoiconic"),
+                                  labels=c("HoMM",
+                                           "Non-hom.\nMM"))),
+       aes(x=meta_task_type, y=variance_explained_vs_zeros,
+           color=run_type)) +
+  facet_wrap(~mapping_toe) +
+  geom_errorbar(stat="summary",
+                fun.data="mean_cl_boot",
+                width=0.4,
+                size=1,
+                position=position_dodge(width=0.4)) +
+  geom_point(stat="summary",
+             fun.y="mean",
+             size=3,
+             position=position_dodge(width=0.4)) +
+  geom_hline(yintercept=1., alpha=0.5,
+             linetype=2) +
+  scale_y_continuous(limits=c(0, 1), breaks = c(0., 0.5, 1.), labels = c("0%", "50%", "100%")) +
+  scale_color_manual(values=c("#e41a1c", "#000000")) +
+  
+  guides(color=guide_legend(title=NULL)) +
+  labs(x = "Meta-mapping trained or held-out",
+       y = "Evaluation performance (%)") #+
+
+
+
+ggsave("../metamapping_paper/figures/polynomials_adaptation_results_with_nonhomm_by_mm_type.png", width=6, height=3)
 ```
