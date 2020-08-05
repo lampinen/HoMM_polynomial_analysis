@@ -228,3 +228,376 @@ ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/perm_mapping_PCA
 #ggsave("../metamapping_paper/figures/polynomial_reps/meta_mapping_PCA.png", width=8, height=8)
 
 ```
+
+
+# analyzing homoiconicity's effect on representations
+
+```{r}
+similarities = replicate(num_runs, data.frame())
+for (run_i in 1:num_runs) {
+  this_d = d[[run_i]] %>%
+    select(-dimension, -run) %>%
+    mutate_all(function(x) {return(x / sqrt(sum(x^2)))}) %>% # norm columns
+    as.matrix
+  
+  similarities_matrix = t(this_d) %*% this_d
+  
+  #cross_similarities = similarities[grepl("base", rownames(similarities)), grepl("meta", colnames(similarities))]  # off-diagonal block of base x meta
+  
+  similarities[[run_i]] = similarities_matrix %>%
+  #  upper.tri %>%
+    as.data.frame %>%
+    mutate(task1 = rownames(similarities_matrix)) %>%
+#    filter(grepl("meta", task1)) %>%  # interested in cross-similarity, so restrict to have at least one meta to keep a manageable size
+    pivot_longer(-task1, names_to="task2", values_to="similarity") %>%
+ #   filter(grepl("base", task2)) %>% # restrict other to base
+    mutate(run=run_i)
+}
+similarities = bind_rows(similarities)
+```
+
+## what is similarity between meta-mapping reps and basic task reps?
+
+```{r}
+ggplot(data=similarities %>%
+         filter(task1 != task2) %>%
+         mutate(task1_is_meta = grepl("meta", task1),
+                task2_is_meta = grepl("meta", task2)),
+       aes(x=task1_is_meta, y=similarity, fill=task2_is_meta)) +
+  geom_bar(stat="summary",
+           fun.y="mean",
+           position="dodge") + 
+  geom_linerange(stat="summary",
+                 fun.data="mean_cl_boot",
+                 position=position_dodge(0.9))
+```
+
+## now restrict to cross-similarities
+```{r}
+similarities = similarities %>%
+  filter(grepl("meta", task1),
+         grepl("base", task2))
+```
+
+
+## do add/mult align with constants?
+
+```{r}
+add_mult_constant_d = similarities %>%
+  filter(grepl("add_|mult_", task1),
+         !grepl("X", task2)) %>%
+  mutate(meta_constant_val=as.numeric(str_extract(task1, "-?[0-9]+\\.[0-9]*")),
+         base_constant_val=as.numeric(str_extract(task2, "-?[0-9]+\\.[0-9]*")),
+         val_product=meta_constant_val * base_constant_val,
+         same_sign=sign(meta_constant_val) == sign(base_constant_val),
+         meta_task_type=str_extract(task1, "add|mult"))
+```
+
+```{r}
+ggplot(add_mult_constant_d,
+       aes(x=base_constant_val, y=similarity, fill=meta_task_type)) +
+  geom_bar(stat="summary",
+           fun.y="mean",
+           position="dodge") +
+  geom_linerange(stat="summary",
+                 fun.data="mean_cl_boot",
+                 position=position_dodge(0.9)) +
+  facet_grid(meta_task_type~ )
+```
+
+```{r}
+ggplot(add_mult_constant_d,
+       aes(x=same_sign, y=similarity, fill=meta_task_type)) +
+  geom_bar(stat="summary",
+           fun.y="mean",
+           position="dodge") +
+  geom_linerange(stat="summary",
+                 fun.data="mean_cl_boot",
+                 position=position_dodge(0.9)) +
+  facet_wrap(~run)
+```
+```{r}
+add_mult_constant_lms = add_mult_constant_d %>%
+  group_by(meta_task_type, run) %>%
+  do(result=summary(lm(.$similarity ~ .$same_sign)))
+add_mult_constant_lms
+```
+```{r}
+add_mult_constant_lms %>% 
+  filter(meta_task_type == "add") %>%
+  pull(result)
+```
+
+
+```{r}
+add_mult_constant_lms %>% 
+  filter(meta_task_type == "mult") %>%
+  pull(result)
+```
+
+```{r}
+ggplot(add_mult_constant_d,
+       aes(x=run, y=similarity, fill=same_sign)) +
+  geom_bar(stat="summary",
+           fun.y="mean",
+           position="dodge") +
+  geom_linerange(stat="summary",
+                 fun.data="mean_cl_boot",
+                 position=position_dodge(0.9)) +
+  facet_wrap(~meta_task_type)
+```
+
+## does squaring relate to square terms?
+
+```{r}
+squaring_d = similarities %>%
+  filter(grepl("square", task1)) %>%
+  mutate(base_contains_square = grepl("^2", task2),
+         base_degree=case_when(!grepl("X", task2) ~ 0,
+                               grepl("^2|X0X|X1X|X2X|X3X", task2) ~ 2,
+                               T ~ 1))
+```
+
+```{r}
+ggplot(squaring_d %>%
+         filter(grepl("X", task2)),
+       aes(x=base_contains_square, fill=base_contains_square, y=similarity)) +
+  geom_bar(stat="summary",
+           fun.y="mean",
+           position="dodge") +
+  geom_linerange(stat="summary",
+                 fun.data="mean_cl_boot",
+                 position=position_dodge(0.9)) +
+  facet_wrap(~run)
+```
+
+
+```{r}
+ggplot(squaring_d,
+       aes(x=base_degree, y=similarity)) +
+  geom_bar(stat="summary",
+           fun.y="mean",
+           position="dodge") +
+  geom_linerange(stat="summary",
+                 fun.data="mean_cl_boot",
+                 position=position_dodge(0.9)) +
+  facet_wrap(~run)
+```
+
+## do variables affected by permutations relate to variables present in a polynomial?
+
+```{r}
+perm_poly_d = similarities %>%
+  filter(grepl("permute", task1),
+         grepl("X", task2)) %>%
+  mutate(meta_permutation=str_extract(task1, "[0-3]+"),
+         meta_X0=substr(meta_permutation, 1, 1),
+         meta_X1=substr(meta_permutation, 2, 2),
+         meta_X2=substr(meta_permutation, 3, 3),
+         meta_X3=substr(meta_permutation, 4, 4),
+         meta_X0_affected=meta_X0 != 0,
+         meta_X1_affected=meta_X1 != 1,
+         meta_X2_affected=meta_X2 != 2,
+         meta_X3_affected=meta_X3 != 3,
+         base_X0_relevant = grepl("X0", task2),
+         base_X1_relevant = grepl("X1", task2),
+         base_X2_relevant = grepl("X2", task2),
+         base_X3_relevant = grepl("X3", task2),
+         meta_perm_is_transposition = meta_permutation %in% c("1023", "0213", "0132", "2103", "3120", "0321") # switches only two variables
+
+  )
+```
+
+```{r}
+ggplot(perm_poly_d %>%
+         filter(meta_perm_is_transposition) %>%
+         mutate(         
+           transposed_variables_relevant = case_when(meta_permutation == "1023" & base_X0_relevant & base_X1_relevant ~ T, 
+                                                     meta_permutation == "0213" & base_X1_relevant & base_X2_relevant ~ T, 
+                                                     meta_permutation == "0132" & base_X2_relevant & base_X3_relevant ~ T, 
+                                                     meta_permutation == "2103" & base_X0_relevant & base_X2_relevant ~ T, 
+                                                     meta_permutation == "3120" & base_X0_relevant & base_X3_relevant ~ T, 
+                                                     meta_permutation == "0321" & base_X1_relevant & base_X3_relevant ~ T, 
+                                                    T ~ F)),
+       aes(x=transposed_variables_relevant, fill=transposed_variables_relevant, y=similarity)) +
+  geom_bar(stat="summary",
+           fun.y="mean",
+           position="dodge") +
+  geom_linerange(stat="summary",
+                 fun.data="mean_cl_boot",
+                 position=position_dodge(0.9)) +
+  facet_wrap(~run)
+```
+
+```{r}
+ggplot(perm_poly_d %>%
+         filter(meta_perm_is_transposition) %>%
+         mutate(         
+           preserved_variables_relevant = case_when(meta_permutation == "1023" & base_X2_relevant & base_X3_relevant ~ T, 
+                                                    meta_permutation == "0213" & base_X0_relevant & base_X3_relevant ~ T, 
+                                                    meta_permutation == "0132" & base_X0_relevant & base_X1_relevant ~ T, 
+                                                    meta_permutation == "2103" & base_X1_relevant & base_X3_relevant ~ T, 
+                                                    meta_permutation == "3120" & base_X1_relevant & base_X2_relevant ~ T, 
+                                                    meta_permutation == "0321" & base_X0_relevant & base_X2_relevant ~ T, 
+                                                    T ~ F)),
+       aes(x=preserved_variables_relevant, fill=preserved_variables_relevant, y=similarity)) +
+  geom_bar(stat="summary",
+           fun.y="mean",
+           position="dodge") +
+  geom_linerange(stat="summary",
+                 fun.data="mean_cl_boot",
+                 position=position_dodge(0.9)) +
+  facet_wrap(~run)
+```
+
+
+# looking at PCA subspace similarities
+
+```{r}
+
+#for (run_i in 1:num_runs) {
+  run_i = 2
+  this_d = d[[run_i]]
+  centered_d = this_d %>% 
+    pivot_longer(-c(dimension, run), names_to="task", values_to="value") %>%
+    group_by(dimension, run) %>%
+    mutate(value = value - mean(value)) %>%
+    ungroup() %>%
+    pivot_wider(names_from=task, values_from=value)
+    
+  pcs = prcomp(centered_d %>%
+                 select(-dimension, -run, -contains("meta")) %>% 
+                 t(), center=F, scale=F)
+  this_base_sds = pcs$sdev
+  this_base_pcs = pcs$rotation
+
+  
+  # meta-mapping only PCA
+  pcs = prcomp(centered_d %>%
+                 select(contains("meta_map")) %>%
+                 t(), center=F, scale=F)
+  this_meta_sds = pcs$sdev
+  this_meta_pcs = pcs$rotation
+  
+  PC_simils = t(this_base_pcs) %*% this_meta_pcs
+  colnames(PC_simils) = paste("meta_", colnames(PC_simils), sep="")
+  rownames(PC_simils) = paste("base_", rownames(PC_simils), sep="")
+  
+  # control
+  control_d = centered_d %>%
+                select(contains("meta_map")) %>%
+                t()
+  for (i in 1:512) {
+    control_d[, i] = sample(control_d[, i], 20, replace=F)
+  }
+  control_pcs = prcomp(control_d,
+                       center=F, scale=F)
+  control_meta_sds = control_pcs$sdev
+  control_meta_pcs = control_pcs$rotation
+  
+  control_PC_simils = t(this_base_pcs) %*% control_meta_pcs
+  colnames(control_PC_simils) = paste("meta_", colnames(control_PC_simils), sep="")
+  rownames(control_PC_simils) = paste("base_", rownames(control_PC_simils), sep="")
+  
+```
+
+
+```{r}
+ggplot(data.frame(variance=this_base_sds^2, rank=1:length(this_base_sds)),
+       aes(x=rank, y=variance)) +
+  geom_bar(stat="identity") +
+  xlim(0, 10)
+```
+
+```{r}
+this_base_variances = this_base_sds^2
+cumulative_base_variances = cumsum(this_base_variances / sum(this_base_variances))
+cumulative_base_variances
+```
+
+```{r}
+ggplot(data.frame(variance=this_meta_sds^2, rank=1:length(this_meta_sds)),
+       aes(x=rank, y=variance)) +
+  geom_bar(stat="identity")
+```
+
+```{r}
+this_meta_variances = this_meta_sds^2
+cumulative_meta_variances = cumsum(this_meta_variances / sum(this_meta_variances))
+cumulative_meta_variances
+```
+
+```{r}
+image(PC_simils[1:10, 1:10], useRaster=T)
+```
+
+```{r}
+PC_simil_data = as.data.frame(PC_simils) %>%
+  mutate(base_PC = row.names(.)) %>%
+  pivot_longer(starts_with("meta"), names_to="meta_PC", values_to="cosine_similarity") %>%
+  mutate_at(vars(c("base_PC", "meta_PC")), function(x) {as.numeric(str_extract(x, "[0-9]+"))})
+```
+
+```{r}
+control_PC_simil_data = as.data.frame(control_PC_simils) %>%
+  mutate(base_PC = row.names(.)) %>%
+  pivot_longer(starts_with("meta"), names_to="meta_PC", values_to="cosine_similarity") %>%
+  mutate_at(vars(c("base_PC", "meta_PC")), function(x) {as.numeric(str_extract(x, "[0-9]+"))})
+```
+
+### random vector control
+
+```{r}
+set.seed(0)
+num_sims = 100000
+
+dots = rep(0, num_sims)
+for (i in 1:num_sims) {
+  x = rnorm(512)
+  x = x / sqrt(sum(x^2))
+  
+  dots[i] = abs(t(this_base_pcs[,1:1]) %*% x) # average abs similarity to top dimension
+}
+```
+
+```{r}
+ggplot(data=data.frame(avg_similarity=dots),
+       aes(x=avg_similarity)) +
+  geom_density()
+```
+
+What is the alpha=0.05 cutoff for significance under this distribution?
+
+```{r}
+cutoff = quantile(dots, c(0.975)) 
+```
+
+```{r}
+ggplot(PC_simil_data %>%
+         filter(base_PC <= 20),
+       aes(x=meta_PC, y=base_PC, fill=abs(cosine_similarity))) +
+  geom_raster() + 
+  scale_fill_gradient(low="white", high="#008855", limits=c(0, 1))
+```
+
+```{r}
+
+ggplot(control_PC_simil_data %>%
+         filter(base_PC <= 20),
+       aes(x=meta_PC, y=base_PC, fill=abs(cosine_similarity))) +
+  geom_raster() + 
+  scale_fill_gradient(low="white", high="#008855", limits=c(0, 1))
+```
+
+```{r}
+ggplot(PC_simil_data %>%
+         filter(base_PC <= 10, meta_PC < 5) %>%
+         mutate(significant = abs(cosine_similarity) > cutoff),
+       aes(x=base_PC, y=abs(cosine_similarity), fill=significant)) +
+  facet_grid(meta_PC ~ .) +
+  geom_bar(stat="identity") +
+  geom_hline(yintercept=cutoff, alpha=0.5, linetype=2)
+```
+
+
+
