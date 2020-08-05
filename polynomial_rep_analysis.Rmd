@@ -526,8 +526,14 @@ for (run_i in 1:runs_to_plot) {
 all_simil_data = bind_rows(all_simil_data)
 ```
 
+```{r}
+all_simil_data = all_simil_data %>%
+  mutate(plotting_run = sprintf("Run %i", run),
+         plotting_condition = factor(condition, levels=c("Original", "Scrambled")))
+```
 
 ## plotting comparison between original and control projections of top 20 modes 
+
 
 Will color relative to the max similarity under the control and original distributions.
 
@@ -549,13 +555,20 @@ max_cutoff = all_simil_data %>%
 
 ```{r}
 ggplot(all_simil_data %>%
-         filter(base_PC <= 20),
-       aes(x=meta_PC, y=base_PC, fill=abs(cosine_similarity))) +
+         filter(base_PC <= 20) %>%
+         mutate(condition=factor(condition, levels=c("Original", "Scrambled"),
+                                 labels=c("Original", "Scrambled control"))),
+       aes(x=base_PC, y=meta_PC, fill=abs(cosine_similarity))) +
   geom_raster() + 
   scale_fill_gradient2(low="#FFFFFF", mid="#FFDD88", high="#008800", midpoint=cutoff,
+                       limits=c(0., NA),
                        breaks=c(0, cutoff, max_cutoff), 
-                       labels=c("0.", sprintf("%.2f - max. scrambled", cutoff), sprintf("%.2f - max. original", max_cutoff))) +
-  facet_grid(condition ~ run)
+                       labels=c("0.", sprintf("%.2f — max.\nin scrambled", cutoff), sprintf("%.2f — max.\nin original", max_cutoff))) +
+  facet_grid(condition ~ plotting_run) +
+  labs(x="Base P.C. index", y="Meta P.C. index") +
+  guides(fill=guide_colorbar(title="Alignment\n(Abs. cosine)\n"))
+
+ggsave("../metamapping_paper/figures/polynomial_reps/top_PC_alignments.png", width=8, height=6)
 ```
 
 ## how much variance of meta reps is contained in first few principle components of the base reps?
@@ -563,16 +576,23 @@ ggplot(all_simil_data %>%
 ```{r}
 shared_variance_d = all_simil_data %>%
   mutate(variance_contained = abs(cosine_similarity)^2 * meta_percent_variance) %>% 
-  group_by(run, condition, base_PC) %>%
+  group_by(plotting_run, condition, base_PC) %>%
   summarize(PC_variance_contained = sum(variance_contained)) %>%
-  group_by(run, condition) %>%
-  mutate(cumulative_variance_contained = cumsum(PC_variance_contained))
+  group_by(plotting_run, condition) %>%
+  mutate(cumulative_variance_contained = cumsum(PC_variance_contained)) %>%
+  ungroup()
 ```
 
 ```{r}
-ggplot(data=shared_variance_d,
+ggplot(data=shared_variance_d %>%
+         mutate(condition=factor(condition, levels=c("Original", "Scrambled"),
+                                 labels=c("Original", "Scrambled\ncontrol"))),
        aes(x=base_PC, y=cumulative_variance_contained, color=condition)) +
   geom_line() +
-  facet_wrap(~run)
+  facet_wrap(~plotting_run) +
+  labs(x="Base PC index",
+       y="Cumulative meta representation variance explained")
+  
+ggsave("../metamapping_paper/figures/polynomial_reps/cumulative_PC_variance.png", width=8, height=5)
 ```
 
