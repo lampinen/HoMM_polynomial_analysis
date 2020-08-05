@@ -454,9 +454,8 @@ ggplot(perm_poly_d %>%
 # looking at PCA subspace similarities
 
 ```{r}
-
-#for (run_i in 1:num_runs) {
-  run_i = 2
+all_simil_data = replicate(runs_to_plot, data.frame())
+for (run_i in 1:runs_to_plot) {
   this_d = d[[run_i]]
   centered_d = this_d %>% 
     pivot_longer(-c(dimension, run), names_to="task", values_to="value") %>%
@@ -490,6 +489,9 @@ ggplot(perm_poly_d %>%
   for (i in 1:512) {
     control_d[, i] = sample(control_d[, i], 20, replace=F)
   }
+  for (j in 1:20) {
+    control_d[j, ] = sample(control_d[j, ], 512, replace=F)
+  }
   control_pcs = prcomp(control_d,
                        center=F, scale=F)
   control_meta_sds = control_pcs$sdev
@@ -499,105 +501,78 @@ ggplot(perm_poly_d %>%
   colnames(control_PC_simils) = paste("meta_", colnames(control_PC_simils), sep="")
   rownames(control_PC_simils) = paste("base_", rownames(control_PC_simils), sep="")
   
-```
-
-
-```{r}
-ggplot(data.frame(variance=this_base_sds^2, rank=1:length(this_base_sds)),
-       aes(x=rank, y=variance)) +
-  geom_bar(stat="identity") +
-  xlim(0, 10)
-```
-
-```{r}
-this_base_variances = this_base_sds^2
-cumulative_base_variances = cumsum(this_base_variances / sum(this_base_variances))
-cumulative_base_variances
-```
-
-```{r}
-ggplot(data.frame(variance=this_meta_sds^2, rank=1:length(this_meta_sds)),
-       aes(x=rank, y=variance)) +
-  geom_bar(stat="identity")
-```
-
-```{r}
-this_meta_variances = this_meta_sds^2
-cumulative_meta_variances = cumsum(this_meta_variances / sum(this_meta_variances))
-cumulative_meta_variances
-```
-
-```{r}
-image(PC_simils[1:10, 1:10], useRaster=T)
-```
-
-```{r}
-PC_simil_data = as.data.frame(PC_simils) %>%
-  mutate(base_PC = row.names(.)) %>%
-  pivot_longer(starts_with("meta"), names_to="meta_PC", values_to="cosine_similarity") %>%
-  mutate_at(vars(c("base_PC", "meta_PC")), function(x) {as.numeric(str_extract(x, "[0-9]+"))})
-```
-
-```{r}
-control_PC_simil_data = as.data.frame(control_PC_simils) %>%
-  mutate(base_PC = row.names(.)) %>%
-  pivot_longer(starts_with("meta"), names_to="meta_PC", values_to="cosine_similarity") %>%
-  mutate_at(vars(c("base_PC", "meta_PC")), function(x) {as.numeric(str_extract(x, "[0-9]+"))})
-```
-
-### random vector control
-
-```{r}
-set.seed(0)
-num_sims = 100000
-
-dots = rep(0, num_sims)
-for (i in 1:num_sims) {
-  x = rnorm(512)
-  x = x / sqrt(sum(x^2))
+  this_meta_variances = this_meta_sds^2
+  this_meta_proportion_variances = this_meta_variances / sum(this_meta_variances)
   
-  dots[i] = abs(t(this_base_pcs[,1:1]) %*% x) # average abs similarity to top dimension
+  this_control_meta_variances = control_meta_sds^2
+  this_control_meta_proportion_variances = this_control_meta_variances / sum(this_control_meta_variances)
+  
+  PC_simil_data = as.data.frame(PC_simils) %>%
+    mutate(base_PC = row.names(.)) %>%
+    mutate(condition = "Original")
+  
+  control_PC_simil_data = as.data.frame(control_PC_simils) %>%
+    mutate(base_PC = row.names(.)) %>%
+    mutate(condition = "Scrambled")
+  
+  all_simil_data[[run_i]] = bind_rows(PC_simil_data, control_PC_simil_data) %>%
+    pivot_longer(starts_with("meta"), names_to="meta_PC", values_to="cosine_similarity") %>%
+    mutate_at(vars(c("base_PC", "meta_PC")), function(x) {as.numeric(str_extract(x, "[0-9]+"))}) %>%
+    mutate(run=run_i) %>%
+    left_join(data.frame(meta_PC=c(1:length(this_meta_proportion_variances), 1:length(this_control_meta_proportion_variances)), 
+                         meta_percent_variance=c(this_meta_proportion_variances, this_control_meta_proportion_variances),
+                         condition=c(rep("Original", length(this_meta_proportion_variances)), rep("Scrambled", length(this_control_meta_proportion_variances)))))
 }
+all_simil_data = bind_rows(all_simil_data)
+```
+
+
+## plotting comparison between original and control projections of top 20 modes 
+
+Will color relative to the max similarity under the control and original distributions.
+
+```{r}
+cutoff = all_simil_data %>% 
+  filter(condition == "Scrambled",
+         base_PC <= 20) %>%
+  pull(cosine_similarity) %>%
+  abs %>%
+  max
+
+max_cutoff = all_simil_data %>% 
+  filter(condition == "Original",
+         base_PC <= 20) %>%
+  pull(cosine_similarity) %>%
+  abs %>%
+  max
 ```
 
 ```{r}
-ggplot(data=data.frame(avg_similarity=dots),
-       aes(x=avg_similarity)) +
-  geom_density()
-```
-
-What is the alpha=0.05 cutoff for significance under this distribution?
-
-```{r}
-cutoff = quantile(dots, c(0.975)) 
-```
-
-```{r}
-ggplot(PC_simil_data %>%
+ggplot(all_simil_data %>%
          filter(base_PC <= 20),
        aes(x=meta_PC, y=base_PC, fill=abs(cosine_similarity))) +
   geom_raster() + 
-  scale_fill_gradient(low="white", high="#008855", limits=c(0, 1))
+  scale_fill_gradient2(low="#FFFFFF", mid="#FFDD88", high="#008800", midpoint=cutoff,
+                       breaks=c(0, cutoff, max_cutoff), 
+                       labels=c("0.", sprintf("%.2f - max. scrambled", cutoff), sprintf("%.2f - max. original", max_cutoff))) +
+  facet_grid(condition ~ run)
+```
+
+## how much variance of meta reps is contained in first few principle components of the base reps?
+
+```{r}
+shared_variance_d = all_simil_data %>%
+  mutate(variance_contained = abs(cosine_similarity)^2 * meta_percent_variance) %>% 
+  group_by(run, condition, base_PC) %>%
+  summarize(PC_variance_contained = sum(variance_contained)) %>%
+  group_by(run, condition) %>%
+  mutate(cumulative_variance_contained = cumsum(PC_variance_contained))
 ```
 
 ```{r}
-
-ggplot(control_PC_simil_data %>%
-         filter(base_PC <= 20),
-       aes(x=meta_PC, y=base_PC, fill=abs(cosine_similarity))) +
-  geom_raster() + 
-  scale_fill_gradient(low="white", high="#008855", limits=c(0, 1))
+ggplot(data=shared_variance_d,
+       aes(x=base_PC, y=cumulative_variance_contained, color=condition)) +
+  geom_line() +
+  facet_wrap(~run)
 ```
-
-```{r}
-ggplot(PC_simil_data %>%
-         filter(base_PC <= 10, meta_PC < 5) %>%
-         mutate(significant = abs(cosine_similarity) > cutoff),
-       aes(x=base_PC, y=abs(cosine_similarity), fill=significant)) +
-  facet_grid(meta_PC ~ .) +
-  geom_bar(stat="identity") +
-  geom_hline(yintercept=cutoff, alpha=0.5, linetype=2)
-```
-
-
 
