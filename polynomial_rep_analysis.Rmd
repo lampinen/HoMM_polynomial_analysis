@@ -590,6 +590,7 @@ ggplot(data=shared_variance_d %>%
        aes(x=base_PC, y=cumulative_variance_contained, color=condition)) +
   geom_line() +
   facet_wrap(~plotting_run) +
+  scale_color_manual(values=c("#005500", "#EECC77")) +
   labs(x="Base PC index",
        y="Cumulative meta representation variance explained")
   
