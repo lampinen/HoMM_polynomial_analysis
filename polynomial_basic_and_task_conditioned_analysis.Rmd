@@ -469,6 +469,7 @@ ggplot(mcl_summarized_d %>%
 ggsave("../metamapping_paper/figures/metaclass_lesion_polynomials.png", width=4, height=3)
 ggsave("../../psych/dissertation/2-HoMM/figures/metaclass_lesion_polynomials.png", width=5, height=3)
 ```
+
 ```{r}
 set.seed(0)  # reproducibility
 mcl_summarized_d %>%
@@ -495,16 +496,23 @@ t.test(variance_explained_vs_zeros ~ run_type, mcl_summarized_d %>%
 ## meta-learning performance
 ```{r}
 summarized_loss_d = loss_d %>%
-  filter(run_type == "polynomials_results",
-         !meta) %>%
-  group_by(run, epoch, train_or_eval) %>%
-  summarize(loss = mean(loss, na.rm=T))
+  filter(run_type %in% c("polynomials_results", "polynomials_results_non_hyper"),
+         !meta) %>%  
+  group_by(run_type, run, task, train_or_eval) %>%
+  mutate(initial_loss = head(loss, n=1)) %>%
+  ungroup() %>%
+  group_by(run_type,run, epoch, train_or_eval) %>%
+  summarize(loss = mean(loss, na.rm=T),
+            initial_loss = mean(initial_loss, na.rm=T)) %>%
+  ungroup() %>%
+  mutate(variance_explained_vs_initial = (initial_loss - loss) / initial_loss)
 ```
 
 
 ```{r}
-ggplot(summarized_loss_d,
-       aes(x=epoch, y=loss, color=train_or_eval)) +
+ggplot(summarized_loss_d %>%
+         filter(run_type == "polynomials_results"),
+       aes(x=epoch, y=variance_explained_vs_initial, color=train_or_eval)) +
   geom_line(aes(group=interaction(run, train_or_eval)),
             alpha=0.2) +
   geom_line(stat="summary",
@@ -513,21 +521,21 @@ ggplot(summarized_loss_d,
   scale_color_manual(breaks=c("train", "eval"), 
                      labels=c("Trained\npolynomials", "Held-out\npolynomials"),
                      values=c("#4d9221", "#c51b7d")) +
-  labs(y="Average meta-learning loss (MSE)", x="Epoch") +
+  labs(y="Normalized meta-learning performance", x="Epoch") +
   guides(color=guide_legend(title=NULL)) +
-  theme(legend.position=c(0.8, 0.75),
+  theme(legend.position=c(0.8, 0.25),
         legend.key.size = unit(1.5, "lines"))
 
 ggsave("../metamapping_paper/figures/basic_meta_learning_polynomials.png", width=4, height=3)
-ggsave("../../psych/dissertation/2-HoMM/figures/basic_meta_learning_polynomials.png", width=5, height=3)
+#ggsave("../../psych/dissertation/2-HoMM/figures/basic_meta_learning_polynomials.png", width=5, height=3)
 ```
 
 ```{r}
 set.seed(0)  # reproducibility
 summarized_loss_d %>%
   filter(epoch %in% c(0, 5000)) %>%
-  group_by(train_or_eval, epoch) %>%
-  do(results=mean_cl_boot(.$loss, na.rm=T)) %>%
+  group_by(run_type, train_or_eval, epoch) %>%
+  do(results=mean_cl_boot(.$variance_explained_vs_initial, na.rm=T)) %>%
   mutate(mean=results$y,
          CIlow=results$ymin,
          CIhigh=results$ymax)
