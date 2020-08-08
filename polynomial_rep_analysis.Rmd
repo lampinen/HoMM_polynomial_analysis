@@ -234,6 +234,7 @@ ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/perm_mapping_PCA
 
 ```{r}
 similarities = replicate(num_runs, data.frame())
+control_similarities = replicate(num_runs, data.frame())
 for (run_i in 1:num_runs) {
   this_d = d[[run_i]] %>%
     select(-dimension, -run) %>%
@@ -242,16 +243,36 @@ for (run_i in 1:num_runs) {
   
   similarities_matrix = t(this_d) %*% this_d
   
-  #cross_similarities = similarities[grepl("base", rownames(similarities)), grepl("meta", colnames(similarities))]  # off-diagonal block of base x meta
-  
   similarities[[run_i]] = similarities_matrix %>%
-  #  upper.tri %>%
     as.data.frame %>%
     mutate(task1 = rownames(similarities_matrix)) %>%
-#    filter(grepl("meta", task1)) %>%  # interested in cross-similarity, so restrict to have at least one meta to keep a manageable size
     pivot_longer(-task1, names_to="task2", values_to="similarity") %>%
- #   filter(grepl("base", task2)) %>% # restrict other to base
     mutate(run=run_i)
+  
+  control_d = this_d 
+  # shuffle
+  for (i in 1:ncol(this_d)) {
+    control_d[, i] = sample(control_d[, i], nrow(this_d), replace=F)
+  }
+  for (j in 1:nrow(this_d)) {
+    control_d[j, ] = sample(control_d[j, ], ncol(this_d), replace=F)
+  }
+  control_similarities_matrix = t(control_d) %*% control_d
+  
+  similarities[[run_i]] = bind_rows(
+    similarities_matrix %>%
+      as.data.frame %>%
+      mutate(task1 = rownames(similarities_matrix)) %>%
+      pivot_longer(-task1, names_to="task2", values_to="similarity") %>%
+      mutate(condition = "Real similarities"),
+    control_similarities_matrix %>%
+      as.data.frame %>%
+      mutate(task1 = rownames(similarities_matrix)) %>%
+      pivot_longer(-task1, names_to="task2", values_to="similarity") %>%
+      mutate(condition = "Scrambled control")
+    )%>%
+      mutate(run=run_i)
+  
 }
 similarities = bind_rows(similarities)
 ```
@@ -262,20 +283,46 @@ similarities = bind_rows(similarities)
 ggplot(data=similarities %>%
          filter(task1 != task2) %>%
          mutate(task1_is_meta = grepl("meta", task1),
-                task2_is_meta = grepl("meta", task2)),
-       aes(x=task1_is_meta, y=similarity, fill=task2_is_meta)) +
-  geom_bar(stat="summary",
-           fun.y="mean",
-           position="dodge") + 
-  geom_linerange(stat="summary",
-                 fun.data="mean_cl_boot",
-                 position=position_dodge(0.9))
+                task2_is_meta = grepl("meta", task2),
+                task_grouping = case_when(!task1_is_meta & ! task2_is_meta ~ "Base vs. base",
+                                          !task1_is_meta &  task2_is_meta ~ "Base vs. meta",
+                                          task1_is_meta &  task2_is_meta ~ "Meta vs. meta",
+                                          T ~ "NA")) %>%
+         filter(task_grouping != "NA", # drop duplicates
+                condition == "Real similarities" | task_grouping == "Base vs. meta") %>%
+         mutate(task_grouping = ifelse(condition == "Scrambled control",
+                                       "Scrambled control", task_grouping),
+                task_grouping = factor(task_grouping, levels=c("Scrambled control", "Base vs. base", "Meta vs. meta", "Base vs. meta")),
+                run = sprintf("Run %i", run)), 
+       
+       aes(x=similarity, color=task_grouping)) +
+  facet_wrap(. ~ run) +
+  scale_color_manual(values=c("#000000", "#b2182b", "#dfc28d", "#4eb3d3")) +
+  geom_density()  +
+  guides(color=guide_legend(title="Task pairing")) +
+  labs(x="Cosine between representations", y="Density") +
+  theme(legend.position=c(0.85, 0.25))
+  
+ggsave("../metamapping_paper/figures/polynomial_reps/meta_base_rep_similarity.png", width=8, height=5)
 ```
+
+```{r}
+similarities %>%
+  filter(task1 != task2) %>%
+  mutate(task1_is_meta = grepl("meta", task1),
+         task2_is_meta = grepl("meta", task2)) %>%
+  filter(!task1_is_meta & task2_is_meta) %>%
+  group_by(condition, run) %>%
+  summarize(mean_similarity = mean(similarity),
+            mean_abs_similarity = mean(abs(similarity)))
+```
+
 
 ## now restrict to cross-similarities
 ```{r}
 similarities = similarities %>%
-  filter(grepl("meta", task1),
+  filter(condition == "Real similarities",
+         grepl("meta", task1),
          grepl("base", task2))
 ```
 
@@ -296,13 +343,8 @@ add_mult_constant_d = similarities %>%
 ```{r}
 ggplot(add_mult_constant_d,
        aes(x=base_constant_val, y=similarity, fill=meta_task_type)) +
-  geom_bar(stat="summary",
-           fun.y="mean",
-           position="dodge") +
-  geom_linerange(stat="summary",
-                 fun.data="mean_cl_boot",
-                 position=position_dodge(0.9)) +
-  facet_grid(meta_task_type~ )
+  geom_point() +
+  facet_grid(meta_task_type~ meta_constant_val)
 ```
 
 ```{r}
@@ -316,12 +358,14 @@ ggplot(add_mult_constant_d,
                  position=position_dodge(0.9)) +
   facet_wrap(~run)
 ```
+
 ```{r}
 add_mult_constant_lms = add_mult_constant_d %>%
   group_by(meta_task_type, run) %>%
   do(result=summary(lm(.$similarity ~ .$same_sign)))
 add_mult_constant_lms
 ```
+
 ```{r}
 add_mult_constant_lms %>% 
   filter(meta_task_type == "add") %>%
