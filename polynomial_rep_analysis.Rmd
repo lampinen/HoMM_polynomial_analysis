@@ -390,6 +390,24 @@ ggplot(add_mult_constant_d,
   facet_wrap(~meta_task_type)
 ```
 
+```{r}
+ggplot(add_mult_constant_d %>%
+         filter(meta_task_type == "mult") %>%
+         mutate(same_sign = ifelse(same_sign, "Same sign", "Different sign")),
+       aes(x=run, y=similarity, fill=same_sign)) +
+  geom_bar(stat="summary",
+           fun.y="mean",
+           position="dodge") +
+  geom_linerange(stat="summary",
+                 fun.data="mean_cl_boot",
+                 position=position_dodge(0.9)) +
+  scale_fill_manual(values=c("#d53e4f", "#abdda4")) +
+  guides(fill=guide_legend(title="Base + meta\nsigns")) +
+  labs(y="Cosine between representations", x="Run")
+ggsave("../metamapping_paper/figures/polynomial_reps/mult_const_alignment.png", width=6, height=4)
+```
+
+
 ## does squaring relate to square terms?
 
 ```{r}
@@ -798,18 +816,19 @@ runs_to_plot = 4  # we plot a subset of the runs to make laying out the plots ea
 ```
 
 ```{r}
-  ggplot(pc_d %>%
+ggplot(pc_d %>%
            filter(base_or_meta == "Base (polynomial)") %>%
            mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
                   compressed_constant_val = ifelse(constant_val > 0,
                                                    sqrt(constant_val),
                                                    -sqrt(-constant_val))), 
-         aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_add_3.000000`, yend=`PC2_mapping_add_3.000000`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
+         aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_add_3.000000`, yend=`PC2_mapping_add_3.000000`, color=compressed_constant_val)) +
     geom_segment(arrow=arrow()) +
     labs(x="PC 1", y="PC 2") +
-    scale_color_gradient2() +
-    guides(color=guide_colorbar(title="Constant\n(sqrt.)"),
-           shape=guide_legend(title="Num. Rel.\nVariables"))
+    scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
+                          labels=c(-16, -4, 0, 4, 16, 36)) + 
+    guides(color=guide_colorbar(title="Polynomial\nconstant\nterm"))
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_add_3.png", width=8, height=6)
 ```
 
 ```{r}
@@ -828,16 +847,38 @@ runs_to_plot = 4  # we plot a subset of the runs to make laying out the plots ea
 ```
 
 ```{r}
+p = ggplot(pc_d %>%
+         filter(base_or_meta == "Base (polynomial)") %>%
+         mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
+                compressed_constant_val = ifelse(constant_val > 0,
+                                                 sqrt(constant_val),
+                                                 -sqrt(-constant_val)),
+                is_constant = ifelse(num_vars_relevant == 0, "Constant polynomials", "Non-constant polynomials")), 
+       aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_square`, yend=`PC2_mapping_square`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
+  geom_segment(arrow=arrow()) +
+  labs(x="PC 1", y="PC 2") +
+  scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
+                        labels=c(-16, -4, 0, 4, 16, 36)) + 
+  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) #+
+#  facet_wrap(~is_constant)
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square.png", plot=p, width=8, height=6)
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square_faceted.png", 
+       plot=p + facet_wrap(~is_constant), width=10, height=6)
+```
+
+```{r}
   ggplot(pc_d %>%
-           filter(base_or_meta == "Base (polynomial)") %>%
+           filter(base_or_meta == "Base (polynomial)",
+                  num_vars_relevant > 0) %>%
            mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
                   compressed_constant_val = ifelse(constant_val > 0,
                                                    sqrt(constant_val),
                                                    -sqrt(-constant_val))), 
-         aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_square`, yend=`PC2_mapping_square`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
+         aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_permute_1032`, yend=`PC2_mapping_permute_1032`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
     geom_segment(arrow=arrow()) +
     labs(x="PC 1", y="PC 2") +
-    scale_color_gradient2() +
+    scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4),
+                          labels=c(-16, -4, 0, 4, 16)) + 
     guides(color=guide_colorbar(title="Constant\n(sqrt.)"),
            shape=guide_legend(title="Num. Rel.\nVariables"))
 ```
