@@ -738,7 +738,7 @@ ggplot(pc_d %>%
                                                    sqrt(constant_val),
                                                    -sqrt(-constant_val))), 
          aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_add_3.000000`, yend=`PC2_mapping_add_3.000000`, color=compressed_constant_val)) +
-    geom_segment(arrow=arrow()) +
+    geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
     labs(x="PC 1", y="PC 2") +
     scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
                           labels=c(-16, -4, 0, 4, 16, 36)) + 
@@ -754,7 +754,7 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_add_3.png", width
                                                    sqrt(constant_val),
                                                    -sqrt(-constant_val))), 
          aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_mult_3.000000`, yend=`PC2_mapping_mult_3.000000`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
-    geom_segment(arrow=arrow()) +
+    geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
     labs(x="PC 1", y="PC 2") +
     scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
                           labels=c(-16, -4, 0, 4, 16, 36)) + 
@@ -771,7 +771,7 @@ p = ggplot(pc_d %>%
                                                  -sqrt(-constant_val)),
                 is_constant = ifelse(num_vars_relevant == 0, "Constant polynomials", "Non-constant polynomials")), 
        aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_square`, yend=`PC2_mapping_square`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
-  geom_segment(arrow=arrow()) +
+  geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
   labs(x="PC 1", y="PC 2") +
   scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
                         labels=c(-16, -4, 0, 4, 16, 36)) + 
@@ -780,6 +780,7 @@ p = ggplot(pc_d %>%
 ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square.png", plot=p, width=8, height=6)
 ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square_faceted.png", 
        plot=p + facet_wrap(~is_constant), width=10, height=6)
+p
 ```
 
 ```{r}
@@ -791,13 +792,12 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square_faceted.pn
                                                    sqrt(constant_val),
                                                    -sqrt(-constant_val))), 
          aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_permute_1032`, yend=`PC2_mapping_permute_1032`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
-    geom_segment(arrow=arrow()) +
-    labs(x="PC 1", y="PC 2") +
-    scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4),
-                          labels=c(-16, -4, 0, 4, 16)) + 
-    guides(color=guide_colorbar(title="Constant\n(sqrt.)"),
-           shape=guide_legend(title="Num. Rel.\nVariables"))
-ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_1032.png", plot=p, width=8, height=6)
+  geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
+  labs(x="PC 1", y="PC 2") +
+  scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4),
+                        labels=c(-16, -4, 0, 4, 16)) + 
+  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) #+
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_1032.png", width=8, height=6)
 ```
 
 ```{r}
