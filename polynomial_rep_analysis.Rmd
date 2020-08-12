@@ -698,7 +698,7 @@ runs_to_plot = 4  # we plot a subset of the runs to make laying out the plots ea
 # meta_mapping_plots_34 = replicate(runs_to_plot, ggplot())
 # perm_mapping_plots = replicate(runs_to_plot, ggplot())
 #for (run_i in 1:runs_to_plot) {
-  run_i = 1
+  run_i = 4
   this_d = mapped_d[[run_i]]
   pcs = prcomp(this_d %>%
                  select(-dimension, -run), center=T, scale=T)
@@ -727,92 +727,7 @@ runs_to_plot = 4  # we plot a subset of the runs to make laying out the plots ea
     mutate(base_or_meta = gsub("_[0-9]+", "", base_or_meta)) # some tasks are duplicated because of float precision.
   
   
-  
-  # overall: base + meta
-  #overall_plots[[run_i]] =
-#   
-#   # constant polynomials organized by value
-#   constant_poly_plots[[run_i]] = ggplot(pc_d %>%
-#            filter(num_vars_relevant == 0) %>%
-#            mutate(constant_val = as.numeric(task),
-#                   compressed_constant_val = ifelse(constant_val > 0,
-#                                                    sqrt(constant_val),
-#                                                    -sqrt(-constant_val))), 
-#          aes(x=PC1, y=PC2, color=compressed_constant_val)) +
-#     geom_point() +
-#     scale_color_gradient2() +#breaks=c(-4, -2, 0, 2, 4, 6),
-#                           #labels=c(-16, -4, 0, 4, 16, 36)) + 
-#     labs(x="PC 1", y="PC 2") +
-#     guides(color=guide_colorbar(title="Value\n(sqrt)"))
-#   
-#   # single variable polynomials
-#   single_var_poly_plots[[run_i]] = ggplot(pc_d %>%
-#            filter(num_vars_relevant == 1), 
-#          aes(x=PC1, y=PC2, color=vars_relevant)) +
-#     geom_point() +
-#     scale_color_brewer(palette="Set2") +
-#     labs(x="PC 1", y="PC 2") +
-#     guides(color=guide_legend(title="Variable"))
-#   
-#   # meta-mapping only PCA
-#   pcs = prcomp(this_d %>%
-#                  select(contains("meta_map")), center=T, scale=T)
-#   pc_d = data.frame(pcs$rotation)
-#   pc_d$task = row.names(pc_d)
-#   pc_d = pc_d %>% 
-#     separate(task, c("task", "base_or_meta"), sep=":") %>%
-#     mutate(meta_task_type = str_extract(task, "mult|add|perm|square"),
-#            task = case_when(meta_task_type %in% c("mult", "add") ~ str_extract(task, "[a-z0-9_-]+"),
-#                             meta_task_type == "perm" ~ paste("perm", str_extract(task, "[0-3]+")),
-#                             T ~ task)) %>%
-#     mutate(base_or_meta = case_when(base_or_meta == "base" ~ "Base (polynomial)",
-#                                     base_or_meta == "meta_class" ~ "Meta Class.",
-#                                     base_or_meta == "meta_map" ~ "Meta Mapping",
-#                                     T ~ base_or_meta
-#            ))
-#   
-#   meta_mapping_plots[[run_i]] = ggplot(pc_d, aes(x=PC1, y=PC2, color=meta_task_type)) +
-# #    geom_point(size=1.5) +
-#     geom_text(aes(label=task),
-#               position=position_nudge(x=0.05)) +
-#     scale_color_brewer(palette="Set1") + 
-#     labs(x="PC 1", y="PC 2") +
-#     guides(color=F)
-#   
-#   meta_mapping_plots_34[[run_i]] = ggplot(pc_d, aes(x=PC3, y=PC4, color=meta_task_type)) +
-# #    geom_point(size=1.5) +
-#     geom_text(aes(label=task),
-#               position=position_nudge(x=0.05)) +
-#     scale_color_brewer(palette="Set1") + 
-#     labs(x="PC 3", y="PC 4") +
-#     guides(color=F)
-# 
-#   # perm only PCA
-#   pcs = prcomp(this_d %>%
-#                  select(contains("perm")), center=T, scale=T)
-#   pc_d = data.frame(pcs$rotation)
-#   pc_d$task = row.names(pc_d)
-#   pc_d = pc_d %>% 
-#     separate(task, c("task", "base_or_meta"), sep=":") %>%
-#     mutate(meta_task_type = str_extract(task, "mult|add|perm|square"),
-#            task = case_when(meta_task_type %in% c("mult", "add") ~ str_extract(task, "[a-z0-9_-]+"),
-#                             meta_task_type == "perm" ~ paste("perm", str_extract(task, "[0-3]+")),
-#                             T ~ task)) %>%
-#     mutate(base_or_meta = case_when(base_or_meta == "base" ~ "Base (polynomial)",
-#                                     base_or_meta == "meta_class" ~ "Meta Class.",
-#                                     base_or_meta == "meta_map" ~ "Meta Mapping",
-#                                     T ~ base_or_meta
-#            ))
-#   
-#   perm_mapping_plots[[run_i]] = ggplot(pc_d, aes(x=PC1, y=PC2, color=meta_task_type)) +
-# #    geom_point(size=1.5) +
-#     geom_text(aes(label=task),
-#               position=position_nudge(x=0.05)) +
-#     scale_color_brewer(palette="Set1", drop=F) + 
-#     labs(x="PC 1", y="PC 2") +
-#     guides(color=F)
-#   
-#}
+
 ```
 
 ```{r}
@@ -841,9 +756,10 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_add_3.png", width
          aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_mult_3.000000`, yend=`PC2_mapping_mult_3.000000`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
     geom_segment(arrow=arrow()) +
     labs(x="PC 1", y="PC 2") +
-    scale_color_gradient2() +
-    guides(color=guide_colorbar(title="Constant\n(sqrt.)"),
-           shape=guide_legend(title="Num. Rel.\nVariables"))
+    scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
+                          labels=c(-16, -4, 0, 4, 16, 36)) + 
+    guides(color=guide_colorbar(title="Polynomial\nconstant\nterm"))
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_mult_3.png", width=8, height=6)
 ```
 
 ```{r}
@@ -881,6 +797,7 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square_faceted.pn
                           labels=c(-16, -4, 0, 4, 16)) + 
     guides(color=guide_colorbar(title="Constant\n(sqrt.)"),
            shape=guide_legend(title="Num. Rel.\nVariables"))
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_1032.png", plot=p, width=8, height=6)
 ```
 
 ```{r}
