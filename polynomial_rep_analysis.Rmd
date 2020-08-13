@@ -664,7 +664,7 @@ ggsave("../metamapping_paper/figures/polynomial_reps/cumulative_PC_variance.png"
 
 ```{r message=FALSE, warning=FALSE}
 mapped_results_dir = "./polynomial_mapped_rep_results"
-mappings_to_load = c("add_3.000000", "mult_3.000000", "permute_1230", "permute_1032", "square")
+mappings_to_load = c("add_3.000000", "mult_3.000000", "permute_1302", "permute_3210", "square")
 num_mapped_runs = 4
 mapped_d = replicate(num_runs, data.frame())
 for (run_i in 0:(num_mapped_runs-1)) {
@@ -784,37 +784,50 @@ p
 ```
 
 ```{r}
-  ggplot(pc_d %>%
+ggplot(pc_d %>%
            filter(base_or_meta == "Base (polynomial)",
                   num_vars_relevant > 0) %>%
            mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
                   compressed_constant_val = ifelse(constant_val > 0,
                                                    sqrt(constant_val),
                                                    -sqrt(-constant_val))), 
-         aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_permute_1032`, yend=`PC2_mapping_permute_1032`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
+         aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_permute_3210`, yend=`PC2_mapping_permute_3210`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
   labs(x="PC 1", y="PC 2") +
   scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16)) + 
   guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) #+
-ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_1032.png", width=8, height=6)
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_3210.png", width=8, height=6)
 ```
 
 ```{r}
-ggarrange(overall_plots[[1]], overall_plots[[2]], overall_plots[[3]], overall_plots[[4]], 
-          labels=sprintf("Run %i", 0:(runs_to_plot-1)),
-          label.x=0.75,
-          common.legend=T)
-
-#ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/overall_PCA.png", width=8, height=8)
-#ggsave("../metamapping_paper/figures/polynomial_reps/overall_PCA.png", width=8, height=8)
+ggplot(pc_d %>%
+           filter(base_or_meta == "Base (polynomial)",
+                  num_vars_relevant > 0) %>%
+           mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
+                  compressed_constant_val = ifelse(constant_val > 0,
+                                                   sqrt(constant_val),
+                                                   -sqrt(-constant_val))), 
+         aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_permute_1302`, yend=`PC2_mapping_permute_1302`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
+  geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
+  labs(x="PC 1", y="PC 2") +
+  scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4),
+                        labels=c(-16, -4, 0, 4, 16)) + 
+  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) #+
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_1302.png", width=8, height=6)
 ```
 
 ```{r}
-ggarrange(constant_poly_plots[[1]], constant_poly_plots[[2]], constant_poly_plots[[3]], constant_poly_plots[[4]], 
-          labels=sprintf("Run %i", 0:(runs_to_plot-1)),
-          label.x=0.75)
+# ggarrange(overall_plots[[1]], overall_plots[[2]], overall_plots[[3]], overall_plots[[4]], 
+#           labels=sprintf("Run %i", 0:(runs_to_plot-1)),
+#           label.x=0.75,
+#           common.legend=T)
 
-#ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/constant_poly_PCA.png", width=8, height=6)
-#ggsave("../metamapping_paper/figures/polynomial_reps/constant_poly_PCA.png", width=8, height=6)
+```
+
+```{r}
+# ggarrange(constant_poly_plots[[1]], constant_poly_plots[[2]], constant_poly_plots[[3]], constant_poly_plots[[4]], 
+#           labels=sprintf("Run %i", 0:(runs_to_plot-1)),
+#           label.x=0.75)
+
 ```
