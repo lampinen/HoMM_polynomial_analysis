@@ -13,7 +13,7 @@ run_config = default_run_config.default_run_config
 run_config.update({
     "output_dir": "/mnt/fs3/lampinen/polynomials/polynomials_mapped_rep_results/",
     "run_offset": 0,
-    "num_runs": 1,
+    "num_runs": 4,
     
     "num_base_train_tasks": 60, # prior to meta-augmentation
     "num_base_eval_tasks": 40, # prior to meta-augmentation
@@ -167,10 +167,12 @@ for run_i in range(run_config["run_offset"], run_config["run_offset"] + run_conf
     run_config["this_run"] = run_i
 
     model = poly_HoMM_model(run_config=run_config)
-    model.run_training()
-    model.save_parameters(model.filename_prefix + "final_checkpoint")
-    model.save_task_embeddings(model.filename_prefix + "task_representations.csv")
-    model.save_metamapped_task_embeddings(model.filename_prefix + "task_representations_")
+    #model.run_training()
+    #model.save_parameters(model.filename_prefix + "final_checkpoint")
+    model.restore_parameters(model.filename_prefix + "final_checkpoint")
+    model.run_varied_meta_batch_eval()
+    #model.save_task_embeddings(model.filename_prefix + "task_representations.csv")
+    #model.save_metamapped_task_embeddings(model.filename_prefix + "task_representations_")
     #model.guess_embeddings_and_optimize(num_optimization_epochs=run_config["num_optimization_epochs"], eval_every=2, random_init_scale=0.1)
 
     tf.reset_default_graph()
