@@ -766,10 +766,12 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_mult_3.png", widt
 p = ggplot(pc_d %>%
          filter(base_or_meta == "Base (polynomial)") %>%
          mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
+                squareable = !grepl("^2|X[0-3]X", task),
                 compressed_constant_val = ifelse(constant_val > 0,
                                                  sqrt(constant_val),
                                                  -sqrt(-constant_val)),
-                is_constant = ifelse(num_vars_relevant == 0, "Constant polynomials", "Non-constant polynomials")), 
+                is_constant = ifelse(num_vars_relevant == 0, "Constant polynomials", "Non-constant polynomials")) %>%
+           filter(squareable), 
        aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_square`, yend=`PC2_mapping_square`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
   labs(x="PC 1", y="PC 2") +
