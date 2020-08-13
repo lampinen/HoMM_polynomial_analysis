@@ -10,6 +10,9 @@ library(tidyverse)
 library(ggpubr)
 library(tsne)
 ```
+```{r}
+theme_set(theme_classic())
+```
 
 # data loading
 
@@ -34,10 +37,6 @@ for (run_i in 0:(num_runs-1)) {
 ```
 
 # PCA plots by run
-
-```{r}
-theme_set(theme_classic())
-```
 
 
 ```{r}
@@ -234,6 +233,7 @@ ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/perm_mapping_PCA
 
 ```{r}
 similarities = replicate(num_runs, data.frame())
+control_similarities = replicate(num_runs, data.frame())
 for (run_i in 1:num_runs) {
   this_d = d[[run_i]] %>%
     select(-dimension, -run) %>%
@@ -242,16 +242,36 @@ for (run_i in 1:num_runs) {
   
   similarities_matrix = t(this_d) %*% this_d
   
-  #cross_similarities = similarities[grepl("base", rownames(similarities)), grepl("meta", colnames(similarities))]  # off-diagonal block of base x meta
-  
   similarities[[run_i]] = similarities_matrix %>%
-  #  upper.tri %>%
     as.data.frame %>%
     mutate(task1 = rownames(similarities_matrix)) %>%
-#    filter(grepl("meta", task1)) %>%  # interested in cross-similarity, so restrict to have at least one meta to keep a manageable size
     pivot_longer(-task1, names_to="task2", values_to="similarity") %>%
- #   filter(grepl("base", task2)) %>% # restrict other to base
     mutate(run=run_i)
+  
+  control_d = this_d 
+  # shuffle
+  for (i in 1:ncol(this_d)) {
+    control_d[, i] = sample(control_d[, i], nrow(this_d), replace=F)
+  }
+  for (j in 1:nrow(this_d)) {
+    control_d[j, ] = sample(control_d[j, ], ncol(this_d), replace=F)
+  }
+  control_similarities_matrix = t(control_d) %*% control_d
+  
+  similarities[[run_i]] = bind_rows(
+    similarities_matrix %>%
+      as.data.frame %>%
+      mutate(task1 = rownames(similarities_matrix)) %>%
+      pivot_longer(-task1, names_to="task2", values_to="similarity") %>%
+      mutate(condition = "Real similarities"),
+    control_similarities_matrix %>%
+      as.data.frame %>%
+      mutate(task1 = rownames(similarities_matrix)) %>%
+      pivot_longer(-task1, names_to="task2", values_to="similarity") %>%
+      mutate(condition = "Scrambled control")
+    )%>%
+      mutate(run=run_i)
+  
 }
 similarities = bind_rows(similarities)
 ```
@@ -262,20 +282,46 @@ similarities = bind_rows(similarities)
 ggplot(data=similarities %>%
          filter(task1 != task2) %>%
          mutate(task1_is_meta = grepl("meta", task1),
-                task2_is_meta = grepl("meta", task2)),
-       aes(x=task1_is_meta, y=similarity, fill=task2_is_meta)) +
-  geom_bar(stat="summary",
-           fun.y="mean",
-           position="dodge") + 
-  geom_linerange(stat="summary",
-                 fun.data="mean_cl_boot",
-                 position=position_dodge(0.9))
+                task2_is_meta = grepl("meta", task2),
+                task_grouping = case_when(!task1_is_meta & ! task2_is_meta ~ "Base vs. base",
+                                          !task1_is_meta &  task2_is_meta ~ "Base vs. meta",
+                                          task1_is_meta &  task2_is_meta ~ "Meta vs. meta",
+                                          T ~ "NA")) %>%
+         filter(task_grouping != "NA", # drop duplicates
+                condition == "Real similarities" | task_grouping == "Base vs. meta") %>%
+         mutate(task_grouping = ifelse(condition == "Scrambled control",
+                                       "Scrambled control", task_grouping),
+                task_grouping = factor(task_grouping, levels=c("Scrambled control", "Base vs. base", "Meta vs. meta", "Base vs. meta")),
+                run = sprintf("Run %i", run)), 
+       
+       aes(x=similarity, color=task_grouping)) +
+  facet_wrap(. ~ run) +
+  scale_color_manual(values=c("#000000", "#b2182b", "#dfc28d", "#4eb3d3")) +
+  geom_density()  +
+  guides(color=guide_legend(title="Task pairing")) +
+  labs(x="Cosine between representations", y="Density") +
+  theme(legend.position=c(0.85, 0.25))
+  
+ggsave("../metamapping_paper/figures/polynomial_reps/meta_base_rep_similarity.png", width=8, height=5)
 ```
+
+```{r}
+similarities %>%
+  filter(task1 != task2) %>%
+  mutate(task1_is_meta = grepl("meta", task1),
+         task2_is_meta = grepl("meta", task2)) %>%
+  filter(!task1_is_meta & task2_is_meta) %>%
+  group_by(condition, run) %>%
+  summarize(mean_similarity = mean(similarity),
+            mean_abs_similarity = mean(abs(similarity)))
+```
+
 
 ## now restrict to cross-similarities
 ```{r}
 similarities = similarities %>%
-  filter(grepl("meta", task1),
+  filter(condition == "Real similarities",
+         grepl("meta", task1),
          grepl("base", task2))
 ```
 
@@ -296,13 +342,8 @@ add_mult_constant_d = similarities %>%
 ```{r}
 ggplot(add_mult_constant_d,
        aes(x=base_constant_val, y=similarity, fill=meta_task_type)) +
-  geom_bar(stat="summary",
-           fun.y="mean",
-           position="dodge") +
-  geom_linerange(stat="summary",
-                 fun.data="mean_cl_boot",
-                 position=position_dodge(0.9)) +
-  facet_grid(meta_task_type~ )
+  geom_point() +
+  facet_grid(meta_task_type~ meta_constant_val)
 ```
 
 ```{r}
@@ -316,12 +357,14 @@ ggplot(add_mult_constant_d,
                  position=position_dodge(0.9)) +
   facet_wrap(~run)
 ```
+
 ```{r}
 add_mult_constant_lms = add_mult_constant_d %>%
   group_by(meta_task_type, run) %>%
   do(result=summary(lm(.$similarity ~ .$same_sign)))
 add_mult_constant_lms
 ```
+
 ```{r}
 add_mult_constant_lms %>% 
   filter(meta_task_type == "add") %>%
@@ -346,6 +389,24 @@ ggplot(add_mult_constant_d,
                  position=position_dodge(0.9)) +
   facet_wrap(~meta_task_type)
 ```
+
+```{r}
+ggplot(add_mult_constant_d %>%
+         filter(meta_task_type == "mult") %>%
+         mutate(same_sign = ifelse(same_sign, "Same sign", "Different sign")),
+       aes(x=run, y=similarity, fill=same_sign)) +
+  geom_bar(stat="summary",
+           fun.y="mean",
+           position="dodge") +
+  geom_linerange(stat="summary",
+                 fun.data="mean_cl_boot",
+                 position=position_dodge(0.9)) +
+  scale_fill_manual(values=c("#d53e4f", "#abdda4")) +
+  guides(fill=guide_legend(title="Base + meta\nsigns")) +
+  labs(y="Cosine between representations", x="Run")
+ggsave("../metamapping_paper/figures/polynomial_reps/mult_const_alignment.png", width=6, height=4)
+```
+
 
 ## does squaring relate to square terms?
 
@@ -597,3 +658,178 @@ ggplot(data=shared_variance_d %>%
 ggsave("../metamapping_paper/figures/polynomial_reps/cumulative_PC_variance.png", width=8, height=5)
 ```
 
+
+# mapped representations plots
+
+
+```{r message=FALSE, warning=FALSE}
+mapped_results_dir = "./polynomial_mapped_rep_results"
+mappings_to_load = c("add_3.000000", "mult_3.000000", "permute_1302", "permute_3210", "square")
+num_mapped_runs = 4
+mapped_d = replicate(num_runs, data.frame())
+for (run_i in 0:(num_mapped_runs-1)) {
+  this_d = read_csv(sprintf("%s/run%i_task_representations.csv", mapped_results_dir, run_i)) 
+  this_d = this_d %>%
+    mutate(run = run_i)# %>%
+  curr_colnames = colnames(this_d)
+  colnames(this_d) = c("dimension", paste(curr_colnames[2:(length(curr_colnames) - 1)], sprintf(":%s", "None"), sep=""), "run")
+  for (this_mapping in mappings_to_load) {
+    this_mapped_d = read_csv(sprintf("%s/run%i_task_representations__mapped-%s.csv", mapped_results_dir, run_i, this_mapping)) 
+    this_mapped_d = this_mapped_d %>%
+      select(-dimension)
+    colnames(this_mapped_d) = paste(colnames(this_mapped_d), sprintf(":mapping_%s", this_mapping), sep="")
+    this_d = bind_cols(this_d, 
+                       this_mapped_d)
+  }
+    
+  mapped_d[[run_i + 1]] = this_d
+}
+```
+
+## PCA plots by run
+
+
+```{r}
+runs_to_plot = 4  # we plot a subset of the runs to make laying out the plots easier
+# overall_plots = replicate(runs_to_plot, ggplot())
+# constant_poly_plots = replicate(runs_to_plot, ggplot())
+# single_var_poly_plots = replicate(runs_to_plot, ggplot())
+# meta_mapping_plots = replicate(runs_to_plot, ggplot())
+# meta_mapping_plots_34 = replicate(runs_to_plot, ggplot())
+# perm_mapping_plots = replicate(runs_to_plot, ggplot())
+#for (run_i in 1:runs_to_plot) {
+  run_i = 4
+  this_d = mapped_d[[run_i]]
+  pcs = prcomp(this_d %>%
+                 select(-dimension, -run), center=T, scale=T)
+  pc_d = data.frame(pcs$rotation)
+  pc_d$task = row.names(pc_d)
+  pc_d = pc_d %>% 
+    separate(task, c("task", "base_or_meta", "mapping"), sep=":") %>%
+    mutate(meta_task_type = str_extract(task, "mult|add|perm|square")) %>%
+    rowwise() %>%
+    mutate(vars_relevant=ifelse(base_or_meta == "base",
+                                str_extract_all(task, "X[0-4]") %>%
+                                  unlist %>% unique %>% sort %>%
+                                  paste(collapse=""),
+                                NA)) %>%
+    ungroup() %>%
+    mutate(num_vars_relevant=str_length(vars_relevant)/2,
+           base_or_meta = case_when(base_or_meta == "base" ~ "Base (polynomial)",
+                                    base_or_meta == "meta_class" ~ "Meta Class.",
+                                    base_or_meta == "meta_map" ~ "Meta Mapping",
+                                    T ~ base_or_meta
+           )) %>%
+    pivot_longer(starts_with("PC"), names_to="PC") %>%
+    unite(PC_mapping, PC, mapping) %>%
+    distinct() %>%
+    pivot_wider(names_from=PC_mapping, values_from=value) %>%
+    mutate(base_or_meta = gsub("_[0-9]+", "", base_or_meta)) # some tasks are duplicated because of float precision.
+  
+  
+
+```
+
+```{r}
+ggplot(pc_d %>%
+           filter(base_or_meta == "Base (polynomial)") %>%
+           mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
+                  compressed_constant_val = ifelse(constant_val > 0,
+                                                   sqrt(constant_val),
+                                                   -sqrt(-constant_val))), 
+         aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_add_3.000000`, yend=`PC2_mapping_add_3.000000`, color=compressed_constant_val)) +
+    geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
+    labs(x="PC 1", y="PC 2") +
+    scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
+                          labels=c(-16, -4, 0, 4, 16, 36)) + 
+    guides(color=guide_colorbar(title="Polynomial\nconstant\nterm"))
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_add_3.png", width=8, height=6)
+```
+
+```{r}
+  ggplot(pc_d %>%
+           filter(base_or_meta == "Base (polynomial)") %>%
+           mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
+                  compressed_constant_val = ifelse(constant_val > 0,
+                                                   sqrt(constant_val),
+                                                   -sqrt(-constant_val))), 
+         aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_mult_3.000000`, yend=`PC2_mapping_mult_3.000000`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
+    geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
+    labs(x="PC 1", y="PC 2") +
+    scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
+                          labels=c(-16, -4, 0, 4, 16, 36)) + 
+    guides(color=guide_colorbar(title="Polynomial\nconstant\nterm"))
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_mult_3.png", width=8, height=6)
+```
+
+```{r}
+p = ggplot(pc_d %>%
+         filter(base_or_meta == "Base (polynomial)") %>%
+         mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
+                squareable = !grepl("^2|X[0-3]X", task),
+                compressed_constant_val = ifelse(constant_val > 0,
+                                                 sqrt(constant_val),
+                                                 -sqrt(-constant_val)),
+                is_constant = ifelse(num_vars_relevant == 0, "Constant polynomials", "Non-constant polynomials")) %>%
+           filter(squareable), 
+       aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_square`, yend=`PC2_mapping_square`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
+  geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
+  labs(x="PC 1", y="PC 2") +
+  scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
+                        labels=c(-16, -4, 0, 4, 16, 36)) + 
+  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) #+
+#  facet_wrap(~is_constant)
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square.png", plot=p, width=8, height=6)
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square_faceted.png", 
+       plot=p + facet_wrap(~is_constant), width=10, height=6)
+p
+```
+
+```{r}
+ggplot(pc_d %>%
+           filter(base_or_meta == "Base (polynomial)",
+                  num_vars_relevant > 0) %>%
+           mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
+                  compressed_constant_val = ifelse(constant_val > 0,
+                                                   sqrt(constant_val),
+                                                   -sqrt(-constant_val))), 
+         aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_permute_3210`, yend=`PC2_mapping_permute_3210`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
+  geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
+  labs(x="PC 1", y="PC 2") +
+  scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4),
+                        labels=c(-16, -4, 0, 4, 16)) + 
+  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) #+
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_3210.png", width=8, height=6)
+```
+
+```{r}
+ggplot(pc_d %>%
+           filter(base_or_meta == "Base (polynomial)",
+                  num_vars_relevant > 0) %>%
+           mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
+                  compressed_constant_val = ifelse(constant_val > 0,
+                                                   sqrt(constant_val),
+                                                   -sqrt(-constant_val))), 
+         aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_permute_1302`, yend=`PC2_mapping_permute_1302`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
+  geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
+  labs(x="PC 1", y="PC 2") +
+  scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4),
+                        labels=c(-16, -4, 0, 4, 16)) + 
+  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) #+
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_1302.png", width=8, height=6)
+```
+
+```{r}
+# ggarrange(overall_plots[[1]], overall_plots[[2]], overall_plots[[3]], overall_plots[[4]], 
+#           labels=sprintf("Run %i", 0:(runs_to_plot-1)),
+#           label.x=0.75,
+#           common.legend=T)
+
+```
+
+```{r}
+# ggarrange(constant_poly_plots[[1]], constant_poly_plots[[2]], constant_poly_plots[[3]], constant_poly_plots[[4]], 
+#           labels=sprintf("Run %i", 0:(runs_to_plot-1)),
+#           label.x=0.75)
+
+```

@@ -244,6 +244,24 @@ summarized_d %>%
             )
 ```
 
+```{r}
+meta_base_rep_similarities = data.frame(run=0:4, meta_base_rep_similarities=c(0.24416769, 0.10534607, 0.14665513, 0.07097830, 0.21243110))
+```
+
+```{r}
+summarized_d = summarized_d %>%
+  left_join(meta_base_rep_similarities)
+```
+
+```{r}
+ggplot(summarized_d %>% 
+         filter(base_task_toe == "eval"),
+       aes(x=meta_base_rep_similarities, y=variance_explained_vs_zeros,
+           color=mapping_toe)) +
+  geom_point()
+```
+
+
 # conditioned vs hyper plot
 
 
