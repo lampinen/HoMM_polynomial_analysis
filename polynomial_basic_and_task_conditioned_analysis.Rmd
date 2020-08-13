@@ -750,3 +750,201 @@ ggplot(nh_less_summarized_d %>%
 
 ggsave("../metamapping_paper/figures/polynomials_adaptation_results_with_nonhomm_by_mm_type.png", width=6, height=3)
 ```
+
+
+# varying meta-batch sizes
+
+## data loading
+
+```{r}
+vmbs_parent_dir = "."
+vmbs_subdirs = c("polynomial_mapped_rep_results")
+vmbs_num_runs = 4
+```
+
+```{r}
+vmbs_training_loss_d = load_d(vmbs_parent_dir, vmbs_subdirs, vmbs_num_runs, "losses")
+vmbs_loss_d = load_d(vmbs_parent_dir, vmbs_subdirs, vmbs_num_runs, "varied_mbs_losses")
+vmbs_meta_true_d = load_d(vmbs_parent_dir, vmbs_subdirs, vmbs_num_runs, "varied_mbs_meta_true_losses")
+```
+
+baseline (epoch 0):
+```{r}
+vmbs_initial_loss_d = vmbs_training_loss_d %>%
+  filter(epoch == 0) %>%
+  select(-epoch) %>%
+  gather(task_and_train_or_eval, loss, -run, -run_type) %>%
+  separate(task_and_train_or_eval, c("task", "train_or_eval"), sep=":") %>%
+  mutate(train_or_eval = sub("\\.[0-9]+", "", train_or_eval),
+         meta = grepl("is|permute|add|mult|square", task)) %>%
+  filter(!is.na(loss)) %>%
+  group_by(run_type,run, train_or_eval) %>%
+  summarize(initial_loss = mean(loss, na.rm=T)) %>%
+  ungroup()
+  
+```
+
+
+```{r}
+vmbs_loss_d = vmbs_loss_d %>%
+  gather(task_and_train_or_eval, loss, -meta_batch_size, -run, -run_type) %>%
+  separate(task_and_train_or_eval, c("task", "train_or_eval"), sep=":") %>%
+  mutate(train_or_eval = sub("\\.[0-9]+", "", train_or_eval),
+         meta = grepl("is|permute|add|mult|square", task)) %>%
+  filter(!is.na(loss))
+  
+```
+
+```{r}
+vmbs_meta_true_d = vmbs_meta_true_d %>%
+  gather(task, loss, -meta_batch_size, -run, -run_type) %>%
+  separate(task, c("meta_task", "mapping_toe", "base_task_toe", "source", "target"), ":|->") %>%
+  filter(!is.na(loss))
+  
+```
+
+## base tasks
+
+```{r}
+vmbs_summarized_loss_d = vmbs_loss_d %>%
+  group_by(run_type, run, meta_batch_size, train_or_eval) %>%
+  do(CI=mean_cl_boot(.$loss, na.rm=T)) %>%
+  mutate(loss = CI$y, loss_lower=CI$ymin, loss_upper=CI$ymax) %>%
+  ungroup() %>%
+  left_join(vmbs_initial_loss_d) %>%
+  mutate(variance_explained_vs_initial = (initial_loss - loss) / initial_loss,
+         variance_explained_vs_initial_lower = (initial_loss - loss_lower) / initial_loss,
+         variance_explained_vs_initial_upper = (initial_loss - loss_upper) / initial_loss)
+```
+
+
+```{r}
+ggplot(vmbs_summarized_loss_d,
+       aes(x=meta_batch_size, y=variance_explained_vs_initial, color=train_or_eval, fill=train_or_eval)) +
+  geom_hline(yintercept=1., alpha=0.5,
+             linetype=2) +
+  annotate("text", x=13.5, y=0.333, angle=90, size=3, label="Polynomial space dimension", alpha=0.5) +
+  geom_segment(data=data.frame(train_or_eval=c("")), inherit_aes=F,
+               aes(color=NULL, fill=NULL),
+               x=15, xend=15, y=0, yend=1, alpha=0.5, linetype=3) +
+  geom_ribbon(stat="summary",
+              fun.data="mean_cl_boot",
+              alpha=0.25,
+              colour=NA,
+              show.legend=F) +
+  geom_line(stat="summary",
+            fun.y="mean",
+            size=1) +
+  # geom_line(aes(group=interaction(run, train_or_eval)),
+  #           alpha=0.2) +
+  scale_color_manual(breaks=c("train", "eval"), 
+                     labels=c("Trained\npolynomials", "Held-out\npolynomials"),
+                     values=c("#4d9221", "#c51b7d")) +
+  labs(y="Normalized base task performance", x="Number of examples") +
+  guides(color=guide_legend(title=NULL)) +
+  scale_y_continuous(limits=c(0, 1), breaks=c(0, 0.5, 1), labels=c("0%", "50%", "100%")) +
+  scale_x_log10(breaks=c(1, 2, 4, 8, 16, 32, 50)) +
+  theme(legend.position=c(0.8, 0.25),
+        legend.key.size = unit(1.5, "lines"))
+
+ggsave("../metamapping_paper/figures/varied_mbs_base_polynomials.png", width=4, height=3)
+```
+
+## meta true
+
+
+```{r}
+vmbs_summarized_d = vmbs_meta_true_d %>%
+  filter(!grepl("square", meta_task)) %>% # square performance is weird, so restricting to others for the aggregated plot
+  group_by(run, meta_batch_size, mapping_toe, base_task_toe) %>%
+  summarise(mean_loss = mean(loss, na.rm=T)) %>%
+  ungroup() %>%
+  inner_join(meta_summarized_baselines) %>%
+  mutate_at(vars(contains("toe")), function(x) str_extract(x, "train|eval")) %>%
+  mutate(variance_explained_vs_zeros = (zeros_loss - mean_loss) / zeros_loss,
+         unadapted_variance_explained_vs_zeros = (zeros_loss - unadapted_loss) / zeros_loss) %>%
+  mutate(mapping_toe = factor(mapping_toe, levels=c("train", "eval"),
+                              labels=c("Trained\nmeta-mapping", "New\nmeta-mapping")))
+```
+
+```{r}
+ggplot(vmbs_summarized_d %>% 
+         filter(base_task_toe == "eval"),
+       aes(x=meta_batch_size, y=variance_explained_vs_zeros,
+           color=mapping_toe, fill=mapping_toe)) +
+  geom_hline(yintercept=1., alpha=0.5,
+             linetype=2) +
+  geom_ribbon(stat="summary",
+              fun.data="mean_cl_boot",
+              alpha=0.25,
+              colour=NA,
+              show.legend=F) +
+  geom_line(stat="summary",
+            fun.y="mean",
+            size=1) +
+  annotate("text", x=6, y=1.05, label="Optimal adaptation", alpha=0.5) +
+  scale_y_continuous(breaks = c(0., 0.5, 1.), labels = c("0%", "50%", "100%")) +
+  scale_x_continuous(breaks=c(1, 2, 4, 8, 16, 32, 50)) +
+  coord_cartesian(ylim=c(0, NA)) + 
+  scale_color_manual(values=c("#984ea3", "#ff7f00")) +
+  scale_fill_manual(values=c("#984ea3", "#ff7f00")) +
+  guides(color=guide_legend(title=NULL)) +
+  labs(x = "Number of examples",
+       y = "Average evaluation performance (%)") + 
+  theme(legend.position=c(0.8, 0.25),
+        legend.key.size = unit(1.5, "lines"))
+  
+
+ggsave("../metamapping_paper/figures/varied_mbs_meta_true_polynomials.png", width=4, height=3)
+```
+
+
+
+```{r}
+vmbs_less_summarized_d = vmbs_meta_true_d %>%
+  mutate(meta_task_type = str_extract(meta_task, "square|add|mult|perm")) %>%
+  group_by(run, meta_batch_size, meta_task_type, mapping_toe, base_task_toe) %>%
+  summarise(mean_loss = mean(loss, na.rm=T)) %>%
+  ungroup() %>%
+  inner_join(meta_mm_summarized_baselines) %>%
+  mutate_at(vars(contains("toe")), function(x) str_extract(x, "train|eval")) %>%
+  mutate(variance_explained_vs_zeros = (zeros_loss - mean_loss) / zeros_loss,
+         unadapted_variance_explained_vs_zeros = (zeros_loss - unadapted_loss) / zeros_loss) %>%
+  mutate(mapping_toe = factor(mapping_toe, levels=c("train", "eval"),
+                              labels=c("Trained\nmeta-mapping", "New\nmeta-mapping")))
+```
+
+```{r}
+ggplot(vmbs_less_summarized_d %>% 
+         filter(base_task_toe == "eval"),
+       aes(x=meta_batch_size, y=variance_explained_vs_zeros,
+           color=mapping_toe, fill=mapping_toe)) +
+  facet_wrap(~meta_task_type) +
+  geom_hline(yintercept=1., alpha=0.5,
+             linetype=2) +
+  geom_ribbon(stat="summary",
+              fun.data="mean_cl_boot",
+              alpha=0.25,
+              colour=NA,
+              show.legend=F) +
+  geom_line(stat="summary",
+            fun.y="mean",
+            size=1) +
+  annotate("text", x=12, y=1.05, label="Optimal adaptation", alpha=0.5) +
+  scale_y_continuous(breaks = c(0., 0.5, 1.), labels = c("0%", "50%", "100%")) +
+  scale_x_continuous(breaks=c(1, 2, 4, 8, 16, 32, 50)) +
+  coord_cartesian(ylim=c(0, NA)) + 
+  scale_color_manual(values=c("#984ea3", "#ff7f00")) +
+  scale_fill_manual(values=c("#984ea3", "#ff7f00")) +
+  guides(color=guide_legend(title=NULL)) +
+  labs(x = "Number of examples",
+       y = "Average evaluation performance (%)")+ 
+  theme(legend.position=c(0.8, 0.25),
+        legend.key.size = unit(1.5, "lines"))
+  
+
+ggsave("../metamapping_paper/figures/varied_mbs_meta_true_by_mm_polynomials.png", width=8, height=6)
+```
+
+
+
