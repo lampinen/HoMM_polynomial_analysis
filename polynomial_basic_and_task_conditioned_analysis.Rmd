@@ -843,7 +843,7 @@ ggplot(vmbs_summarized_loss_d,
   labs(y="Normalized base task performance", x="Number of examples") +
   guides(color=guide_legend(title=NULL)) +
   scale_y_continuous(limits=c(0, 1), breaks=c(0, 0.5, 1), labels=c("0%", "50%", "100%")) +
-  scale_x_log10(breaks=c(1, 2, 4, 8, 16, 32, 50)) +
+  scale_x_continuous(breaks=c(1, 2, 4, 8, 16, 32, 50)) +
   theme(legend.position=c(0.8, 0.25),
         legend.key.size = unit(1.5, "lines"))
 
@@ -882,7 +882,7 @@ ggplot(vmbs_summarized_d %>%
   geom_line(stat="summary",
             fun.y="mean",
             size=1) +
-  annotate("text", x=6, y=1.05, label="Optimal adaptation", alpha=0.5) +
+  annotate("text", x=41.6, y=1.05, label="Optimal adaptation", alpha=0.5) +
   scale_y_continuous(breaks = c(0., 0.5, 1.), labels = c("0%", "50%", "100%")) +
   scale_x_continuous(breaks=c(1, 2, 4, 8, 16, 32, 50)) +
   coord_cartesian(ylim=c(0, NA)) + 
@@ -930,7 +930,8 @@ ggplot(vmbs_less_summarized_d %>%
   geom_line(stat="summary",
             fun.y="mean",
             size=1) +
-  annotate("text", x=12, y=1.05, label="Optimal adaptation", alpha=0.5) +
+  annotate("text", x=42.85, y=1.05, label="Optimal adaptation", alpha=0.5) +
+  
   scale_y_continuous(breaks = c(0., 0.5, 1.), labels = c("0%", "50%", "100%")) +
   scale_x_continuous(breaks=c(1, 2, 4, 8, 16, 32, 50)) +
   coord_cartesian(ylim=c(0, NA)) + 
@@ -939,7 +940,7 @@ ggplot(vmbs_less_summarized_d %>%
   guides(color=guide_legend(title=NULL)) +
   labs(x = "Number of examples",
        y = "Average evaluation performance (%)")+ 
-  theme(legend.position=c(0.8, 0.25),
+  theme(legend.position=c(0.9, 0.1),
         legend.key.size = unit(1.5, "lines"))
   
 
