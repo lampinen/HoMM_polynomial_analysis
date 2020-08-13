@@ -889,7 +889,7 @@ ggplot(vmbs_summarized_d %>%
   scale_color_manual(values=c("#984ea3", "#ff7f00")) +
   scale_fill_manual(values=c("#984ea3", "#ff7f00")) +
   guides(color=guide_legend(title=NULL)) +
-  labs(x = "Number of examples (input task, output task pairs)",
+  labs(x = "Number of meta-mapping examples (task pairs)",
        y = "Average evaluation performance (%)") + 
   theme(legend.position=c(0.8, 0.25),
         legend.key.size = unit(1.5, "lines"))
@@ -938,7 +938,7 @@ ggplot(vmbs_less_summarized_d %>%
   scale_color_manual(values=c("#984ea3", "#ff7f00")) +
   scale_fill_manual(values=c("#984ea3", "#ff7f00")) +
   guides(color=guide_legend(title=NULL)) +
-  labs(x = "Number of examples",
+  labs(x = "Number of meta-mapping examples (task pairs)",
        y = "Average evaluation performance (%)")+ 
   theme(legend.position=c(0.9, 0.1),
         legend.key.size = unit(1.5, "lines"))
