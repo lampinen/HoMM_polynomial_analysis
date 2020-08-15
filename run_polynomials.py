@@ -167,6 +167,7 @@ for run_i in range(run_config["run_offset"], run_config["run_offset"] + run_conf
     run_config["this_run"] = run_i
 
     model = poly_HoMM_model(run_config=run_config)
+    model.save_meta_pairings()
     #model.run_training()
     #model.save_parameters(model.filename_prefix + "final_checkpoint")
     model.restore_parameters(model.filename_prefix + "final_checkpoint")
