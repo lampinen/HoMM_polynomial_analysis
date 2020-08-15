@@ -678,7 +678,7 @@ for (run_i in 0:(num_mapped_runs-1)) {
     this_mapped_d = read_csv(sprintf("%s/run%i_task_representations__mapped-%s.csv", mapped_results_dir, run_i, this_mapping)) 
     this_mapped_d = this_mapped_d %>%
       select(-dimension)
-    colnames(this_mapped_d) = paste(colnames(this_mapped_d), sprintf(":mapping_%s", this_mapping), sep="")
+    colnames(this_mapped_d) = paste(colnames(this_mapped_d), sprintf("_train:mapping_%s", this_mapping), sep="")
     this_d = bind_cols(this_d, 
                        this_mapped_d)
   }
@@ -692,53 +692,45 @@ for (run_i in 0:(num_mapped_runs-1)) {
 }
 ```
 
-## PCA plots by run
+## transformation plots
 
 
 ```{r}
-runs_to_plot = 4  # we plot a subset of the runs to make laying out the plots easier
-# overall_plots = replicate(runs_to_plot, ggplot())
-# constant_poly_plots = replicate(runs_to_plot, ggplot())
-# single_var_poly_plots = replicate(runs_to_plot, ggplot())
-# meta_mapping_plots = replicate(runs_to_plot, ggplot())
-# meta_mapping_plots_34 = replicate(runs_to_plot, ggplot())
-# perm_mapping_plots = replicate(runs_to_plot, ggplot())
-#for (run_i in 1:runs_to_plot) {
-  run_i = 4
-  this_d = mapped_d[[run_i]]
-  pcs = prcomp(this_d %>%
-                 select(-dimension, -run), center=T, scale=T)
-  pc_d = data.frame(pcs$rotation)
-  pc_d$task = row.names(pc_d)
-  pc_d = pc_d %>% 
-    separate(task, c("task", "base_or_meta", "mapping"), sep=":") %>%
-    mutate(meta_task_type = str_extract(task, "mult|add|perm|square")) %>%
-    rowwise() %>%
-    mutate(vars_relevant=ifelse(base_or_meta == "base",
-                                str_extract_all(task, "X[0-4]") %>%
-                                  unlist %>% unique %>% sort %>%
-                                  paste(collapse=""),
-                                NA)) %>%
-    ungroup() %>%
-    mutate(num_vars_relevant=str_length(vars_relevant)/2,
-           base_or_meta = case_when(base_or_meta == "base" ~ "Base (polynomial)",
-                                    base_or_meta == "meta_class" ~ "Meta Class.",
-                                    base_or_meta == "meta_map" ~ "Meta Mapping",
-                                    T ~ base_or_meta
-           )) %>%
-    pivot_longer(starts_with("PC"), names_to="PC") %>%
-    unite(PC_mapping, PC, mapping) %>%
-    distinct() %>%
-    pivot_wider(names_from=PC_mapping, values_from=value) %>%
-    mutate(base_or_meta = gsub("_[0-9]+", "", base_or_meta)) # some tasks are duplicated because of float precision.
-  
-  
+run_i = 4
+this_d = mapped_d[[run_i]]
+pcs = prcomp(this_d %>%
+               select(-dimension, -run), center=T, scale=T)
+pc_d = data.frame(pcs$rotation)
+pc_d$task = row.names(pc_d)
+pc_d = pc_d %>% 
+  separate(task, c("task", "base_or_meta", "mapping"), sep=":") %>%
+  filter(!grepl("[0-9]", base_or_meta)) %>% # drop duplicates
+  separate(base_or_meta, c("base_or_meta", "base_task_toe"), sep="_") %>%
+  rowwise() %>%
+  mutate(vars_relevant=ifelse(base_or_meta == "base",
+                              str_extract_all(task, "X[0-4]") %>%
+                                unlist %>% unique %>% sort %>%
+                                paste(collapse=""),
+                              NA)) %>%
+  ungroup() %>%
+  mutate(num_vars_relevant=str_length(vars_relevant)/2,
+         base_or_meta = case_when(base_or_meta == "base" ~ "Base (polynomial)",
+                                  base_or_meta == "meta_class" ~ "Meta Class.",
+                                  base_or_meta == "meta_map" ~ "Meta Mapping",
+                                  T ~ base_or_meta
+         )) %>%
+  pivot_longer(starts_with("PC"), names_to="PC") %>%
+  unite(PC_mapping, PC, mapping) %>%
+  pivot_wider(names_from=PC_mapping, values_from=value)
+
+
 
 ```
 
 ```{r}
 ggplot(pc_d %>%
-           filter(base_or_meta == "Base (polynomial)") %>%
+           filter(base_or_meta == "Base (polynomial)",
+                  base_task_toe == "train") %>%
            mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
                   compressed_constant_val = ifelse(constant_val > 0,
                                                    sqrt(constant_val),
@@ -754,7 +746,8 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_add_3.png", width
 
 ```{r}
   ggplot(pc_d %>%
-           filter(base_or_meta == "Base (polynomial)") %>%
+           filter(base_or_meta == "Base (polynomial)",
+                  base_task_toe == "train") %>%
            mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
                   compressed_constant_val = ifelse(constant_val > 0,
                                                    sqrt(constant_val),
@@ -770,7 +763,8 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_mult_3.png", widt
 
 ```{r}
 p = ggplot(pc_d %>%
-         filter(base_or_meta == "Base (polynomial)") %>%
+         filter(base_or_meta == "Base (polynomial)",
+                base_task_toe == "train") %>%
          mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
                 squareable = !grepl("^2|X[0-3]X", task),
                 compressed_constant_val = ifelse(constant_val > 0,
@@ -794,6 +788,7 @@ p
 ```{r}
 ggplot(pc_d %>%
            filter(base_or_meta == "Base (polynomial)",
+                  base_task_toe == "train",
                   num_vars_relevant > 0) %>%
            mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
                   compressed_constant_val = ifelse(constant_val > 0,
@@ -811,6 +806,7 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_3210.png"
 ```{r}
 ggplot(pc_d %>%
            filter(base_or_meta == "Base (polynomial)",
+                  base_task_toe == "train",
                   num_vars_relevant > 0) %>%
            mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
                   compressed_constant_val = ifelse(constant_val > 0,
@@ -839,6 +835,8 @@ original_rep_d = pc_d %>%
 
 ```{r}
 joined_d = pc_d %>%
+  filter(base_task_toe == "train") %>%  # only train tasks get mapped, eval will be joined as targets
+  select(-base_task_toe) %>%
   left_join(meta_pairing_d[[run_i]] %>%
               filter(meta_mapping %in% mappings_to_load) %>%
               select(-meta_toe) %>%  # only trained, for now
@@ -888,11 +886,11 @@ plotting_joined_d = joined_d %>%
          
 ```
 
-TODO: figure out where all the targets are going
+TODO: think about whether it's more appropriate to compare on evals (where mapping hasn't been trained, but also ground-truth target isn't known, because target task isn't trained) or on trains (where mapping is trained but at least we know target performance is good).
 
 ```{r}
 ggplot(plotting_joined_d %>%
-         filter(mapping == "mult_3",
+         filter(mapping == "square",
                 base_toe == "eval"), 
          aes(x=source_PC1, y=source_PC2, xend=PC1, yend=PC2, color=compressed_constant_val, linetype=type)) +
     geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
@@ -905,7 +903,8 @@ ggplot(plotting_joined_d %>%
 ```{r}
 ggplot(plotting_joined_d %>%
          filter(squareable,
-                mapping == "square"), 
+                base_toe == "eval",
+                mapping == "mult_3"), 
          aes(x=source_PC1, y=source_PC2, xend=PC1, yend=PC2, color=compressed_constant_val, linetype=type)) +
     geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
     labs(x="PC 1", y="PC 2") +
