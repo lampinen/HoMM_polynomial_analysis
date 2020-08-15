@@ -667,6 +667,7 @@ mapped_results_dir = "./polynomial_mapped_rep_results"
 mappings_to_load = c("add_3.000000", "mult_3.000000", "permute_1302", "permute_3210", "square")
 num_mapped_runs = 4
 mapped_d = replicate(num_runs, data.frame())
+meta_pairing_d = replicate(num_runs, data.frame())
 for (run_i in 0:(num_mapped_runs-1)) {
   this_d = read_csv(sprintf("%s/run%i_task_representations.csv", mapped_results_dir, run_i)) 
   this_d = this_d %>%
@@ -681,8 +682,13 @@ for (run_i in 0:(num_mapped_runs-1)) {
     this_d = bind_cols(this_d, 
                        this_mapped_d)
   }
-    
   mapped_d[[run_i + 1]] = this_d
+  
+  # pairings
+  this_pairing_d = read_csv(sprintf("%s/run%i_meta_pairings.csv", mapped_results_dir, run_i)) %>%
+    mutate(run = run_i)
+  meta_pairing_d[[run_i + 1]] = this_pairing_d
+    
 }
 ```
 
@@ -819,17 +825,92 @@ ggplot(pc_d %>%
 ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_1302.png", width=8, height=6)
 ```
 
-```{r}
-# ggarrange(overall_plots[[1]], overall_plots[[2]], overall_plots[[3]], overall_plots[[4]], 
-#           labels=sprintf("Run %i", 0:(runs_to_plot-1)),
-#           label.x=0.75,
-#           common.legend=T)
+## compare mapped to target
 
+```{r}
+original_rep_d = pc_d %>% 
+  select(task, PC1_None, PC2_None) %>%
+  group_by(task) %>% # remove redundancies
+  summarize(PC1_None = head(PC1_None, 1),  
+            PC2_None = head(PC2_None, 1))  %>% 
+  ungroup()
+```
+
+
+```{r}
+joined_d = pc_d %>%
+  left_join(meta_pairing_d[[run_i]] %>%
+              filter(meta_mapping %in% mappings_to_load) %>%
+              select(-meta_toe) %>%  # only trained, for now
+              mutate(meta_mapping = paste("mapping_", meta_mapping, "_target", sep="")) %>%
+              unite(input_base_toe, input, base_toe, sep=":") %>%
+              spread(meta_mapping, target) %>%
+              separate(input_base_toe, c("task", "base_toe"), sep=":")) %>%
+  # now get PCs for true targets
+  left_join(original_rep_d %>%
+              rename(PC1_square_target=PC1_None,
+                     PC2_square_target=PC2_None),
+            by=c("mapping_square_target"="task")) %>%
+  left_join(original_rep_d %>%
+              rename(PC1_mult_3_target=PC1_None,
+                     PC2_mult_3_target=PC2_None),
+            by=c("mapping_mult_3.000000_target"="task")) %>%
+  left_join(original_rep_d %>%
+              rename(PC1_add_3_target=PC1_None,
+                     PC2_add_3_target=PC2_None),
+            by=c("mapping_add_3.000000_target"="task")) %>%
+  left_join(original_rep_d %>%
+              rename(PC1_permute_1302_target=PC1_None,
+                     PC2_permute_1302_target=PC2_None),
+            by=c("mapping_permute_1302_target"="task"))
+  
+```
+
+For now, simplify for plotting
+```{r}
+plotting_joined_d = joined_d %>%
+  filter(base_or_meta == "Base (polynomial)") %>%#,
+        # (!is.na(PC1_square_target)) | (!is.na(PC1_mult_3_target)) | (!is.na(PC1_add_3_target)) | (!is.na(PC1_permute_1302_target))) %>%
+  mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
+         squareable = !grepl("^2|X[0-3]X", task),
+         compressed_constant_val = ifelse(constant_val > 0,
+                                          sqrt(constant_val),
+                                          -sqrt(-constant_val))) %>%
+  select(task, base_or_meta, base_toe, vars_relevant, num_vars_relevant, compressed_constant_val, squareable, starts_with("PC1_"), starts_with("PC2_")) %>%
+  rename(source_PC1=PC1_None,
+         source_PC2=PC2_None) %>%
+  pivot_longer(starts_with("PC"), names_to="PC_and_mapping") %>%
+  mutate(mapping=str_extract(PC_and_mapping, "add_3|mult_3|square|permute_1302|permute_3210|None"),
+         PC=str_extract(PC_and_mapping, "PC1|PC2"),
+         type=ifelse(grepl("target", PC_and_mapping), "target_output", "actual_output")) %>%
+  select(-PC_and_mapping) %>%
+  pivot_wider(names_from=PC, values_from=value)
+         
+```
+
+TODO: figure out where all the targets are going
+
+```{r}
+ggplot(plotting_joined_d %>%
+         filter(mapping == "mult_3",
+                base_toe == "eval"), 
+         aes(x=source_PC1, y=source_PC2, xend=PC1, yend=PC2, color=compressed_constant_val, linetype=type)) +
+    geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
+    labs(x="PC 1", y="PC 2") +
+    scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
+                          labels=c(-16, -4, 0, 4, 16, 36)) + 
+    guides(color=guide_colorbar(title="Polynomial\nconstant\nterm"))
 ```
 
 ```{r}
-# ggarrange(constant_poly_plots[[1]], constant_poly_plots[[2]], constant_poly_plots[[3]], constant_poly_plots[[4]], 
-#           labels=sprintf("Run %i", 0:(runs_to_plot-1)),
-#           label.x=0.75)
-
+ggplot(plotting_joined_d %>%
+         filter(squareable,
+                mapping == "square"), 
+         aes(x=source_PC1, y=source_PC2, xend=PC1, yend=PC2, color=compressed_constant_val, linetype=type)) +
+    geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
+    labs(x="PC 1", y="PC 2") +
+    scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
+                          labels=c(-16, -4, 0, 4, 16, 36)) + 
+    guides(color=guide_colorbar(title="Polynomial\nconstant\nterm"))
 ```
+
