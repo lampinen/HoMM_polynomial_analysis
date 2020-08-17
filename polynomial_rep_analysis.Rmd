@@ -937,8 +937,8 @@ square_match_plot = ggplot(square_match_plotting_d,
   geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
   geom_text(data=square_match_plotting_d %>% 
               filter(type == "Actual\noutput") %>%
-              mutate(hjust=c(0.35, 0.35, 0.75, 0.3, 0.75, 0.75),
-                     vjust=c(0.5, 0.5, 0.5, 0.5, 0.5, 0.5)),
+              mutate(hjust=c(0.85, 0.45, 1, 0.9, 0.5, 0.5),
+                     vjust=c(0.66, 0.5, 0.5, 0.5, 0.75, 1)),
             aes(label=task,
                 hjust=hjust,
                 vjust=vjust),
@@ -988,14 +988,16 @@ square_match_plot
                         limits=c(-4, 4)) + 
   scale_linetype_manual(values=c("11","solid"), drop=F) +
   scale_alpha_manual(values=c(0.5, 1), drop=F) +
-  guides(color=guide_colorbar(title="Poly.\nconst.\nterm"),
-         linetype=guide_legend(title="Arrow\n(inset)"),
-         alpha=guide_legend(title="Arrow\n(inset)")) +
+  guides(color=guide_colorbar(title="Poly.\nconstant\ncoeff."),
+         linetype=guide_legend(title="Mapping"),
+         alpha=guide_legend(title="Mapping")) +
   theme(axis.text.x=element_blank(),  # not really meaningful for principle components
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank(),
-        legend.margin=margin(c(5,1,5,-5))) + 
+        legend.margin=margin(c(5,0,5,-5)),
+        legend.box.spacing=unit(0.2, "cm"),
+        legend.key.size = unit(0.5, "cm")) + 
   # now insert inset plot
   annotation_custom(ggplotGrob(square_match_plot), xmin = -0.0035, xmax = 0.006, 
                     ymin = -0.002, ymax = 0.012)
