@@ -889,6 +889,33 @@ plotting_joined_d = joined_d %>%
 
 TODO: think about whether it's more appropriate to compare on evals (where mapping hasn't been trained, but also ground-truth target isn't known, because target task isn't trained) or on trains (where mapping is trained but at least we know target performance is good).
 
+```{r}
+# legend drawing function with arrow fill bugfix, copied from https://stackoverflow.com/questions/57193353/show-filled-arrow-in-legend-ggplot
+library(grid)
+library(rlang)
+
+draw_key_segment_custom <- function(data, params, size) {
+  if (is.null(data$linetype)) {
+    data$linetype <- 0
+  } else {
+    data$linetype[is.na(data$linetype)] <- 0
+  }
+
+  segmentsGrob(0.1, 0.5, 0.9, 0.5,
+    gp = gpar(
+      col = alpha(data$colour %||% data$fill %||% "black", data$alpha),
+      # the following line was added relative to the ggplot2 code
+      fill = alpha(data$colour %||% data$fill %||% "black", data$alpha),
+      lwd = (data$size %||% 0.5) * .pt,
+      lty = data$linetype %||% 1,
+      lineend = "butt"
+    ),
+    arrow = params$arrow
+  )
+}
+```
+
+
 
 ```{r}
 square_match_plotting_d = plotting_joined_d %>%
@@ -905,22 +932,75 @@ square_match_plotting_d = plotting_joined_d %>%
            gsub("\\+-", "-", .))
 
 
-ggplot(square_match_plotting_d, 
-       aes(x=source_PC1, y=source_PC2, xend=PC1, yend=PC2, color=compressed_constant_val, linetype=type)) +
+square_match_plot = ggplot(square_match_plotting_d, 
+       aes(x=source_PC1, y=source_PC2, xend=PC1, yend=PC2, color=compressed_constant_val, linetype=type, alpha=type)) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
-  geom_text(data=square_match_plotting_d %>% filter(type == "Actual\noutput"),
-            aes(label=task),
-            nudge_y=-0.0005) +
+  geom_text(data=square_match_plotting_d %>% 
+              filter(type == "Actual\noutput") %>%
+              mutate(hjust=c(0.35, 0.35, 0.75, 0.3, 0.75, 0.75),
+                     vjust=c(0.5, 0.5, 0.5, 0.5, 0.5, 0.5)),
+            aes(label=task,
+                hjust=hjust,
+                vjust=vjust),
+            nudge_y=-0.0005,
+            size=2) +
   labs(x="PC 1", y="PC 2") +
-  scale_color_gradient2(low="#a50026", mid="#eedd99", high="#313695",
+  xlim(-0.015, 0.005) +
+  ylim(-0.017, 0.01)+
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+                        breaks=c(-5, -2, 0, 2, 4),
+                        labels=c(-16, -4, 0, 4, 16),
+                        limits=c(-4, 4)) + 
+  scale_linetype_manual(values=c("11","solid")) +
+  scale_alpha_manual(values=c(0.5, 1)) +
+  guides(color=F,#guide_colorbar(title="Polynomial\nconstant\nterm"),
+         alpha=F,#guide_legend(title=NULL),
+         linetype=F)+#guide_legend(title=NULL)) +
+  theme(#legend.key.size = unit(1, "cm"),
+        #legend.position=c(0.9, 0.7),
+        axis.text.x=element_blank(),  # not really meaningful for principle components
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.background = element_rect(fill = "transparent"),
+        plot.background = element_rect(fill = "transparent", color = NA),)
+square_match_plot
+```
+
+```{r}
+  ggplot(pc_d %>%
+           filter(base_or_meta == "Base (polynomial)",
+                  base_task_toe == "train") %>%
+           mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
+                  squareable = !grepl("^2|X[0-3]X", task),
+                  compressed_constant_val = ifelse(constant_val > 0,
+                                                   sqrt(constant_val),
+                                                   -sqrt(-constant_val))) %>%
+           filter(squareable) %>%
+           mutate(type = factor("actual_output", levels=c("target_output", "actual_output"), labels=c("Nom.\ntarget", "Actual\noutput"))), 
+       aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_square`, yend=`PC2_mapping_square`, color=compressed_constant_val, linetype=type, alpha=type)) +
+  geom_segment(arrow=arrow(angle=15, length=unit(0.06, "inches"), type="closed"),
+               key_glyph=draw_key_segment_custom) +
+  labs(x="PC 1", y="PC 2") +
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
                         breaks=c(-4, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
                         limits=c(-4, 4)) + 
-  scale_linetype_manual(values=c(2,1)) +
-  guides(color=F,#guide_colorbar(title="Polynomial\nconstant\nterm"),
-         linetype=guide_legend(title="Meta-mapping")) +
-  theme(legend.key.size = unit(1, "cm"),
-        legend.position=c(0.7, 0.7))
+  scale_linetype_manual(values=c("11","solid"), drop=F) +
+  scale_alpha_manual(values=c(0.5, 1), drop=F) +
+  guides(color=guide_colorbar(title="Poly.\nconst.\nterm"),
+         linetype=guide_legend(title="Arrow\n(inset)"),
+         alpha=guide_legend(title="Arrow\n(inset)")) +
+  theme(axis.text.x=element_blank(),  # not really meaningful for principle components
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        legend.margin=margin(c(5,1,5,-5))) + 
+  # now insert inset plot
+  annotation_custom(ggplotGrob(square_match_plot), xmin = -0.0035, xmax = 0.006, 
+                    ymin = -0.002, ymax = 0.012)
+
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square_with_inset.png", width=4.33, height=3.66)
 ```
 
 ```{r}
@@ -928,8 +1008,10 @@ mult_match_plotting_d = plotting_joined_d %>%
   filter(mapping == "mult_3",
          base_toe == "train",
          task %in% c("-3.55", "3.54X1", #"1.56+1.46X2", 
-                     "-2.18+1.10X1", "3.97", "-1.60+-1.64X3", "0.43+0.34X0^2", "2.39+3.07X2+0.20X1^2+-2.23X2^2")) %>%
+                     #"-2.18+1.10X1", 
+                     "3.97", "-1.60+-1.64X3", "0.43+0.34X0^2", "2.39+3.07X2+0.20X1^2+-2.23X2^2")) %>%
   mutate(type = factor(type, levels=c("target_output", "actual_output"), labels=c("Nominal\ntarget", "Actual\noutput")),
+         #task = ifelse(task == "2.39+3.07X2+0.20X1^2+-2.23X2^2", "2.39+3.07X2+\n0.20X1^2+-2.23X2^2", task),
          task = task %>%
            gsub("X0", "w", .) %>%
            gsub("X1", "x", .) %>%
@@ -937,20 +1019,71 @@ mult_match_plotting_d = plotting_joined_d %>%
            gsub("X3", "z", .) %>%
            gsub("\\+-", "-", .))
 
-ggplot(mult_match_plotting_d, 
-       aes(x=source_PC1, y=source_PC2, xend=PC1, yend=PC2, color=compressed_constant_val, linetype=type)) +
-  geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
-  geom_text(data=mult_match_plotting_d %>% filter(type == "Actual\noutput"),
-            aes(label=task),
-            nudge_y=-0.0005) +
+mult_match_plot = ggplot(mult_match_plotting_d, 
+                         aes(x=source_PC1, y=source_PC2, xend=PC1, yend=PC2, color=compressed_constant_val, linetype=type, alpha=type)) +
+  # geom_segment(data=mult_match_plotting_d %>%
+  #                filter(type == "Nominal\ntarget"),
+  #              arrow=arrow(angle=15, length=unit(0.06, "inches"), type="open"),
+  #              arrow.fill="#ffffff") +
+  # geom_segment(data=mult_match_plotting_d %>%
+  #                filter(type == "Actual\noutput"),
+  geom_segment(arrow=arrow(angle=15, length=unit(0.06, "inches"), type="closed")) +
+  geom_text(data=mult_match_plotting_d %>% 
+              filter(type == "Actual\noutput") %>%
+              mutate(hjust=c(0.35, 0.35, 1, 0.3, 0.75, 0.25),
+                     vjust=c(0.5, 0.5, 0.5, 0.5, 0.75, 0.5)),
+            aes(label=task,
+                hjust=hjust,
+                vjust=vjust),
+            nudge_y=-0.0005,
+            size=2) +
   labs(x="PC 1", y="PC 2") +
-  scale_color_gradient2(low="#a50026", mid="#eedd99", high="#313695",
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+                        breaks=c(-5, -2, 0, 2, 4),
+                        labels=c(-16, -4, 0, 4, 16),
+                        limits=c(-4, 4)) + 
+  scale_linetype_manual(values=c("11","solid")) +
+  scale_alpha_manual(values=c(0.5, 1)) +
+  xlim(-0.015, 0.005) +
+  ylim(-0.017, 0.01)+
+  guides(color=F,#guide_colorbar(title="Polynomial\nconstant\nterm"),
+         alpha=F,
+         linetype=F)+#guide_legend(title="Meta-mapping")) +
+  theme(#legend.key.size = unit(1, "cm"),
+        #legend.position=c(0.7, 0.7),
+        axis.text.x=element_blank(),  # not really meaningful for principle components
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.background = element_rect(fill = "transparent"),
+        plot.background = element_rect(fill = "transparent", color = NA),
+  )
+mult_match_plot
+```
+
+```{r}
+  ggplot(pc_d %>%
+           filter(base_or_meta == "Base (polynomial)",
+                  base_task_toe == "train") %>%
+           mutate(constant_val = as.numeric(str_extract(task, "^[-]?[0-9]+\\.[0-9]++")),
+                  compressed_constant_val = ifelse(constant_val > 0,
+                                                   sqrt(constant_val),
+                                                   -sqrt(-constant_val))), 
+         aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_mult_3.000000`, yend=`PC2_mapping_mult_3.000000`, color=compressed_constant_val)) +
+  geom_segment(arrow=arrow(angle=15, length=unit(0.06, "inches"), type="closed")) +
+  labs(x="PC 1", y="PC 2") +
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
                         breaks=c(-4, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
                         limits=c(-4, 4)) + 
-  scale_linetype_manual(values=c(2,1)) +
-  guides(color=F,#guide_colorbar(title="Polynomial\nconstant\nterm"),
-         linetype=F)+#guide_legend(title="Meta-mapping")) +
-  theme(legend.key.size = unit(1, "cm"),
-        legend.position=c(0.7, 0.7))
+  guides(color=F) + #guide_colorbar(title="Polynomial\nconstant\nterm"))
+  theme(axis.text.x=element_blank(),  # not really meaningful for principle components
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) + 
+  # now insert inset plot
+  annotation_custom(ggplotGrob(mult_match_plot), xmin = -0.0035, xmax = 0.006, 
+                    ymin = -0.002, ymax = 0.012)
+
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_mult_3_with_inset.png", width=3.66, height=3.66)
 ```
