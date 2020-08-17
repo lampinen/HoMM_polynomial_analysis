@@ -628,7 +628,7 @@ ggplot(all_simil_data %>%
   scale_fill_gradient2(low="#FFFFFF", mid="#FFDD88", high="#008800", midpoint=cutoff,
                        limits=c(0., NA),
                        breaks=c(0, cutoff, max_cutoff), 
-                       labels=c("0.", sprintf("%.2f — max.\nin scrambled", cutoff), sprintf("%.2f — max.\nin original", max_cutoff))) +
+                       labels=c("0.", sprintf("%.2f - max.\nin scrambled", cutoff), sprintf("%.2f - max.\nin original", max_cutoff))) +
   facet_grid(condition ~ plotting_run) +
   labs(x="Base P.C. index", y="Meta P.C. index") +
   guides(fill=guide_colorbar(title="Alignment\n(Abs. cosine)\n"))
@@ -1057,7 +1057,7 @@ mult_match_plot = ggplot(mult_match_plotting_d,
   geom_text(data=mult_match_plotting_d %>% 
               filter(type == "Actual\noutput") %>%
               mutate(hjust=c(0.35, 0.35, 1, 0.3, 0.75, 0.25),
-                     vjust=c(0.5, 0.5, 0.5, 0.5, 0.75, 0.5)),
+                     vjust=c(0.5, 0.5, 0.5, 0.5, 0.7, 0.5)),
             aes(label=task,
                 hjust=hjust,
                 vjust=vjust),
