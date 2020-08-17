@@ -306,7 +306,7 @@ ggplot(data=similarities %>%
   labs(x="Cosine between representations", y="Density") +
   theme(legend.position=c(0.85, 0.25))
   
-ggsave("../metamapping_paper/figures/polynomial_reps/meta_base_rep_similarity.png", width=8, height=5)
+ggsave("../metamapping_paper/figures/polynomial_reps/meta_base_rep_similarity.pdf", width=8, height=5)
 ```
 
 ```{r}
@@ -408,7 +408,7 @@ ggplot(add_mult_constant_d %>%
   scale_fill_manual(values=c("#d53e4f", "#abdda4")) +
   guides(fill=guide_legend(title="Base + meta\nsigns")) +
   labs(y="Cosine between representations", x="Run")
-ggsave("../metamapping_paper/figures/polynomial_reps/mult_const_alignment.png", width=6, height=4)
+ggsave("../metamapping_paper/figures/polynomial_reps/mult_const_alignment.pdf", width=4, height=3)
 ```
 
 
@@ -633,7 +633,7 @@ ggplot(all_simil_data %>%
   labs(x="Base P.C. index", y="Meta P.C. index") +
   guides(fill=guide_colorbar(title="Alignment\n(Abs. cosine)\n"))
 
-ggsave("../metamapping_paper/figures/polynomial_reps/top_PC_alignments.png", width=8, height=6)
+ggsave("../metamapping_paper/figures/polynomial_reps/top_PC_alignments.pdf", width=8, height=4)
 ```
 
 ## how much variance of meta reps is contained in first few principle components of the base reps?
@@ -659,7 +659,7 @@ ggplot(data=shared_variance_d %>%
   labs(x="Base PC index",
        y="Cumulative meta representation variance explained")
   
-ggsave("../metamapping_paper/figures/polynomial_reps/cumulative_PC_variance.png", width=8, height=5)
+ggsave("../metamapping_paper/figures/polynomial_reps/cumulative_PC_variance.pdf", width=8, height=4)
 ```
 
 
