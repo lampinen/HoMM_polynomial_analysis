@@ -89,8 +89,11 @@ for (run_i in 1:runs_to_plot) {
                                                    sqrt(constant_val),
                                                    -sqrt(-constant_val))), 
          aes(x=PC1, y=PC2, color=compressed_constant_val)) +
-    geom_point() +
-    scale_color_gradient2() +#breaks=c(-4, -2, 0, 2, 4, 6),
+    geom_point() +  
+    scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+                        breaks=c(-6, -4, -2, 0, 2, 4, 6),
+                        labels=c(-36, -16, -4, 0, 4, 16, 36)) +
+    #scale_color_gradient2() +#breaks=c(-4, -2, 0, 2, 4, 6),
                           #labels=c(-16, -4, 0, 4, 16, 36)) + 
     labs(x="PC 1", y="PC 2") +
     guides(color=guide_colorbar(title="Value\n(sqrt)"))
@@ -172,8 +175,8 @@ ggarrange(overall_plots[[1]], overall_plots[[2]], overall_plots[[3]], overall_pl
           label.x=0.75,
           common.legend=T)
 
-ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/overall_PCA.png", width=8, height=8)
-ggsave("../metamapping_paper/figures/polynomial_reps/overall_PCA.png", width=8, height=8)
+#ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/overall_PCA.png", width=8, height=8)
+ggsave("../metamapping_paper/figures/polynomial_reps/overall_PCA.pdf", width=8, height=8)
 ```
 
 ```{r}
@@ -181,8 +184,9 @@ ggarrange(constant_poly_plots[[1]], constant_poly_plots[[2]], constant_poly_plot
           labels=sprintf("Run %i", 0:(runs_to_plot-1)),
           label.x=0.75)
 
-ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/constant_poly_PCA.png", width=8, height=6)
-ggsave("../metamapping_paper/figures/polynomial_reps/constant_poly_PCA.png", width=8, height=6)
+#ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/constant_poly_PCA.png", width=8, height=6)
+#ggsave("../metamapping_paper/figures/polynomial_reps/constant_poly_PCA.png", width=8, height=6)
+ggsave("../metamapping_paper/figures/polynomial_reps/constant_poly_PCA.pdf", width=8, height=6)
 ```
 
 ```{r}
@@ -200,8 +204,8 @@ ggarrange(meta_mapping_plots[[1]], meta_mapping_plots[[2]], meta_mapping_plots[[
           label.x=0.425,
           common.legend=T)
 
-ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/meta_mapping_PCA.png", width=8, height=8)
-ggsave("../metamapping_paper/figures/polynomial_reps/meta_mapping_PCA.png", width=8, height=8)
+#ggsave("../../psych/dissertation/2-HoMM/figures/polynomial_reps/meta_mapping_PCA.png", width=8, height=8)
+ggsave("../metamapping_paper/figures/polynomial_reps/meta_mapping_PCA.pdf", width=8, height=8)
 
 ```
 
@@ -736,12 +740,15 @@ ggplot(pc_d %>%
                                                    sqrt(constant_val),
                                                    -sqrt(-constant_val))), 
          aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_add_3.000000`, yend=`PC2_mapping_add_3.000000`, color=compressed_constant_val)) +
-    geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
-    labs(x="PC 1", y="PC 2") +
-    scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
-                          labels=c(-16, -4, 0, 4, 16, 36)) + 
-    guides(color=guide_colorbar(title="Polynomial\nconstant\nterm"))
-ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_add_3.png", width=8, height=6)
+  geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
+  labs(x="PC 1", y="PC 2") +
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+                        breaks=c(-4, -2, 0, 2, 4),
+                        labels=c(-16, -4, 0, 4, 16),
+                        limits=c(-4.5, 4.5)) + 
+  guides(color=F)#guide_colorbar(title="Polynomial\nconstant\nterm")) +
+  #theme(legend.position=c(0.9, 0.75))
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_add_3.pdf", width=4, height=4)
 ```
 
 ```{r}
@@ -753,12 +760,15 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_add_3.png", width
                                                    sqrt(constant_val),
                                                    -sqrt(-constant_val))), 
          aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_mult_3.000000`, yend=`PC2_mapping_mult_3.000000`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
-    geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
-    labs(x="PC 1", y="PC 2") +
-    scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
-                          labels=c(-16, -4, 0, 4, 16, 36)) + 
-    guides(color=guide_colorbar(title="Polynomial\nconstant\nterm"))
-ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_mult_3.png", width=8, height=6)
+  geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
+  labs(x="PC 1", y="PC 2") +
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+                        breaks=c(-4, -2, 0, 2, 4),
+                        labels=c(-16, -4, 0, 4, 16),
+                        limits=c(-4.5, 4.5)) + 
+  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) +
+  theme(legend.position=c(0.9, 0.75))
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_mult_3.pdf", width=4, height=4)
 ```
 
 ```{r}
@@ -775,13 +785,16 @@ p = ggplot(pc_d %>%
        aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_square`, yend=`PC2_mapping_square`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
   labs(x="PC 1", y="PC 2") +
-  scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4, 6),
-                        labels=c(-16, -4, 0, 4, 16, 36)) + 
-  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) #+
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+                        breaks=c(-4, -2, 0, 2, 4),
+                        labels=c(-16, -4, 0, 4, 16),
+                        limits=c(-4.5, 4.5)) + 
+  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm"))  +
+  theme(legend.position=c(0.9, 0.75))#+
 #  facet_wrap(~is_constant)
-ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square.png", plot=p, width=8, height=6)
-ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square_faceted.png", 
-       plot=p + facet_wrap(~is_constant), width=10, height=6)
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square.pdf", plot=p, width=4, height=4)
+#ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square_faceted.png", 
+#       plot=p + facet_wrap(~is_constant), width=10, height=6)
 p
 ```
 
@@ -797,10 +810,13 @@ ggplot(pc_d %>%
          aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_permute_3210`, yend=`PC2_mapping_permute_3210`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
   labs(x="PC 1", y="PC 2") +
-  scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4),
-                        labels=c(-16, -4, 0, 4, 16)) + 
-  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) #+
-ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_3210.png", width=8, height=6)
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+                        breaks=c(-4, -2, 0, 2, 4),
+                        labels=c(-16, -4, 0, 4, 16),
+                        limits=c(-4.5, 4.5)) + 
+  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) +
+  theme(legend.position=c(0.9, 0.75)) #+
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_3210.pdf", width=4, height=4)
 ```
 
 ```{r}
@@ -815,10 +831,13 @@ ggplot(pc_d %>%
          aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_permute_1302`, yend=`PC2_mapping_permute_1302`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
   labs(x="PC 1", y="PC 2") +
-  scale_color_gradient2(breaks=c(-4, -2, 0, 2, 4),
-                        labels=c(-16, -4, 0, 4, 16)) + 
-  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) #+
-ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_1302.png", width=8, height=6)
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+                        breaks=c(-4, -2, 0, 2, 4),
+                        labels=c(-16, -4, 0, 4, 16),
+                        limits=c(-4.5, 4.5)) + 
+  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) +
+  theme(legend.position=c(0.9, 0.75)) #+
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_permute_1302.pdf", width=4, height=4)
 ```
 
 ## compare mapped to target
@@ -934,7 +953,7 @@ square_match_plotting_d = plotting_joined_d %>%
 
 square_match_plot = ggplot(square_match_plotting_d, 
        aes(x=source_PC1, y=source_PC2, xend=PC1, yend=PC2, color=compressed_constant_val, linetype=type, alpha=type)) +
-  geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
+  geom_segment(arrow=arrow(angle=15, length=unit(0.06, "inches"), type="closed")) +
   geom_text(data=square_match_plotting_d %>% 
               filter(type == "Actual\noutput") %>%
               mutate(hjust=c(0.85, 0.45, 1, 0.9, 0.5, 0.5),
@@ -950,7 +969,7 @@ square_match_plot = ggplot(square_match_plotting_d,
   scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
                         breaks=c(-5, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
-                        limits=c(-4, 4)) + 
+                        limits=c(-4.5, 4.5)) + 
   scale_linetype_manual(values=c("11","solid")) +
   scale_alpha_manual(values=c(0.5, 1)) +
   guides(color=F,#guide_colorbar(title="Polynomial\nconstant\nterm"),
@@ -963,8 +982,13 @@ square_match_plot = ggplot(square_match_plotting_d,
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank(),
         panel.background = element_rect(fill = "transparent"),
-        plot.background = element_rect(fill = "transparent", color = NA),)
-square_match_plot
+        plot.background = element_rect(fill = "transparent", color = NA))
+square_match_plot + 
+  guides(color=guide_colorbar(title="Polynomial\nconstant\nterm"),
+         alpha=guide_legend(title="Mapping"),
+         linetype=guide_legend(title="Mapping"))
+#ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_match_square.png", width=4.33, height=3.66)
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_match_square.pdf", width=4.33, height=3.66)
 ```
 
 ```{r}
@@ -985,7 +1009,7 @@ square_match_plot
   scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
                         breaks=c(-4, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
-                        limits=c(-4, 4)) + 
+                        limits=c(-4.5, 4.5)) + 
   scale_linetype_manual(values=c("11","solid"), drop=F) +
   scale_alpha_manual(values=c(0.5, 1), drop=F) +
   guides(color=guide_colorbar(title="Poly.\nconstant\ncoeff."),
@@ -1002,7 +1026,7 @@ square_match_plot
   annotation_custom(ggplotGrob(square_match_plot), xmin = -0.0035, xmax = 0.006, 
                     ymin = -0.002, ymax = 0.012)
 
-ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square_with_inset.png", width=4.33, height=3.66)
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_square_with_inset.pdf", width=4.33, height=3.66)
 ```
 
 ```{r}
@@ -1043,7 +1067,7 @@ mult_match_plot = ggplot(mult_match_plotting_d,
   scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
                         breaks=c(-5, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
-                        limits=c(-4, 4)) + 
+                        limits=c(-4.5, 4.5)) + 
   scale_linetype_manual(values=c("11","solid")) +
   scale_alpha_manual(values=c(0.5, 1)) +
   xlim(-0.015, 0.005) +
@@ -1061,6 +1085,7 @@ mult_match_plot = ggplot(mult_match_plotting_d,
         plot.background = element_rect(fill = "transparent", color = NA),
   )
 mult_match_plot
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_match_mult_3.pdf", width=3.66, height=3.66)
 ```
 
 ```{r}
@@ -1077,7 +1102,7 @@ mult_match_plot
   scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
                         breaks=c(-4, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
-                        limits=c(-4, 4)) + 
+                        limits=c(-4.5, 4.5)) + 
   guides(color=F) + #guide_colorbar(title="Polynomial\nconstant\nterm"))
   theme(axis.text.x=element_blank(),  # not really meaningful for principle components
         axis.ticks.x=element_blank(),
@@ -1087,5 +1112,5 @@ mult_match_plot
   annotation_custom(ggplotGrob(mult_match_plot), xmin = -0.0035, xmax = 0.006, 
                     ymin = -0.002, ymax = 0.012)
 
-ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_mult_3_with_inset.png", width=3.66, height=3.66)
+ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_mult_3_with_inset.pdf", width=3.66, height=3.66)
 ```
