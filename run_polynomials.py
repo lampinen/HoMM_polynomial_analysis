@@ -159,6 +159,41 @@ class poly_HoMM_model(HoMM_model.HoMM_model):
         else:
             raise ValueError("Unrecognized meta task: %s" % task)
 
+    def save_base_data_representations(self, filename):
+        input_range = np.arange(-1., 1.1, 0.2)
+        num_examples = 4 * len(input_range) + 6 * len(input_range)**2
+        this_inputs = np.zeros([num_examples, 4])
+        i = 0
+        for var_i in range(4):
+            # each var independently
+            for val in input_range:
+                curr_input = np.zeros([4])
+                curr_input[var_i] = val
+                this_inputs[i] = curr_input
+                i += 1
+
+            # and pairs
+            for val in input_range:
+                for var_j in range(var_i + 1, 4):
+                    for val2 in input_range:
+                        curr_input = np.zeros([4])
+                        curr_input[var_i] = val
+                        curr_input[var_j] = val2
+                        this_inputs[i] = curr_input
+                        i += 1
+
+        feed_dict = {self.base_input_ph: this_inputs,
+                     self.keep_prob_ph: 1.}
+        this_results = self.sess.run(self.processed_input, feed_dict=feed_dict)
+
+        with open(filename, "w") as fout:
+            num_dims = this_results.shape[1]
+            fout.write("X0, X1, X2, X3, " + ", ".join(["dim{}".format(x) for x in range(num_dims)]) + "\n") 
+            format_string = ", ".join(["%f"] * (num_dims + 4)) + "\n"
+            for result_i in range(num_examples):
+                fout.write(format_string % (tuple(this_inputs[result_i, :]) + tuple(this_results[result_i, :])))
+
+
 
 ## running stuff
 for run_i in range(run_config["run_offset"], run_config["run_offset"] + run_config["num_runs"]):
@@ -171,8 +206,9 @@ for run_i in range(run_config["run_offset"], run_config["run_offset"] + run_conf
     #model.run_training()
     #model.save_parameters(model.filename_prefix + "final_checkpoint")
     model.restore_parameters(model.filename_prefix + "final_checkpoint")
+    model.save_base_data_representations(model.filename_prefix + "input_representations.csv")
     #model.run_varied_meta_batch_eval()
-    model.save_task_embeddings(model.filename_prefix + "task_representations.csv")
+    #model.save_task_embeddings(model.filename_prefix + "task_representations.csv")
     #model.save_metamapped_task_embeddings(model.filename_prefix + "task_representations_", save_eval=True)
     #model.guess_embeddings_and_optimize(num_optimization_epochs=run_config["num_optimization_epochs"], eval_every=2, random_init_scale=0.1)
 
