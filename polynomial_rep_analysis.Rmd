@@ -670,8 +670,8 @@ ggsave("../metamapping_paper/figures/polynomial_reps/cumulative_PC_variance.pdf"
 mapped_results_dir = "./polynomial_mapped_rep_results"
 mappings_to_load = c("add_3.000000", "mult_3.000000", "permute_1302", "permute_3210", "square")
 num_mapped_runs = 4
-mapped_d = replicate(num_runs, data.frame())
-meta_pairing_d = replicate(num_runs, data.frame())
+mapped_d = replicate(num_mapped_runs, data.frame())
+meta_pairing_d = replicate(num_mapped_runs, data.frame())
 for (run_i in 0:(num_mapped_runs-1)) {
   this_d = read_csv(sprintf("%s/run%i_task_representations.csv", mapped_results_dir, run_i)) 
   this_d = this_d %>%
@@ -1113,4 +1113,132 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_match_mult_3.pdf"
                     ymin = -0.002, ymax = 0.012)
 
 ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_mult_3_with_inset.pdf", width=3.66, height=3.66)
+```
+
+
+# comparing base input reps to tasks
+
+```{r}
+input_rep_d = replicate(num_mapped_runs, data.frame())
+for (run_i in 0:(num_mapped_runs-1)) {
+  this_d = read_csv(sprintf("%s/run%i_input_representations.csv", mapped_results_dir, run_i)) 
+  this_d = this_d %>%
+    mutate(run = run_i)
+  input_rep_d[[run_i + 1]] = this_d
+}
+```
+
+```{r}
+run_i = 1
+
+this_task_d = mapped_d[[run_i]] %>%
+  pivot_longer(-c(dimension, run), names_to="task") %>%
+  filter(grepl("None", task)) %>% # unmapped only
+  mutate(data_type="task_rep",
+         dimension=sprintf("dim%i", dimension)) %>%
+  pivot_wider(names_from=dimension)
+
+this_task_matrix = this_task_d %>%
+  select(-task, -data_type, -run) %>%
+  mutate_all(function(x) {return(x / sqrt(sum(x^2)))}) %>% # norm columns
+  as.matrix
+
+this_input_d = input_rep_d[[run_i]] %>%
+  mutate(data_type="input_rep") %>%
+  # filter(X1 == 0,
+  #        X2 == 0,
+  #        X3 == 0) %>%
+  unite("data_point", starts_with("X"), sep=":") %>%
+  distinct()
+
+this_input_matrix = this_input_d %>%
+  select(-data_point, -data_type, -run) %>%
+  mutate_all(function(x) {return(x / sqrt(sum(x^2)))}) %>% # norm columns
+  as.matrix
+  
+similarities_matrix = this_task_matrix %*% t(this_input_matrix)
+
+colnames(similarities_matrix) = this_input_d$data_point
+simil_d = similarities_matrix %>%
+  as.data.frame %>%
+  mutate(task = this_task_d$task) %>%
+  rowwise() %>%
+  mutate(task_vars_relevant=str_extract_all(task, "X[0-4]") %>%
+                                unlist %>% unique %>% sort %>%
+                                paste(collapse="")) %>%
+  ungroup() %>%
+  pivot_longer(-c(task, task_vars_relevant), names_to="data_point") %>%
+  separate(data_point, c("X0", "X1", "X2", "X3"), sep=":")
+
+```
+
+```{r}
+simil_d = simil_d %>%
+  mutate(task_base_or_meta=str_extract(task, "base|meta"),
+         point_num_vars_relevant = (X0 != 0) + (X1 != 0) + (X2 != 0) + (X3 != 0),
+         task_num_vars_relevant = str_length(task_vars_relevant)/2,
+         task_X0_relevant=grepl("X0", task),
+         task_X1_relevant=grepl("X1", task),
+         task_X2_relevant=grepl("X2", task),
+         task_X3_relevant=grepl("X3", task),
+         point_X0_relevant=X0 != 0,
+         point_X1_relevant=X1 != 0,
+         point_X2_relevant=X2 != 0,
+         point_X3_relevant=X3 != 0,
+         vars_relevant_IoU = ifelse(task_num_vars_relevant == 0 & point_num_vars_relevant ==0, NA, ((task_X0_relevant & point_X0_relevant) + (task_X1_relevant & point_X1_relevant) +(task_X2_relevant & point_X2_relevant) +(task_X3_relevant & point_X3_relevant))/ ((task_X0_relevant | point_X0_relevant) + (task_X1_relevant | point_X1_relevant) +(task_X2_relevant | point_X2_relevant) +(task_X3_relevant | point_X3_relevant))))
+```
+
+```{r}
+ggplot(data=simil_d %>%
+         group_by(task_num_vars_relevant, point_num_vars_relevant) %>%
+         summarize(mean_abs_simil = mean(abs(value))),
+       aes(x=task_num_vars_relevant, color=as.factor(point_num_vars_relevant), y=mean_abs_simil)) +
+  geom_point(position="dodge")# +
+  # geom_linerange(stat="summary",
+  #                fun.y="mean_cl_boot",
+  #                position="dodge")
+```
+
+
+```{r}
+simil_d = simil_d %>%
+  mutate(task_X0=as.numeric(str_extract(task, "[-]?[0-9]+\\.[0-9]+(?=X0+)")),
+         task_X1=as.numeric(str_extract(task, "[-]?[0-9]+\\.[0-9]+(?=X1+)")),
+         task_X2=as.numeric(str_extract(task, "[-]?[0-9]+\\.[0-9]+(?=X2+)")),
+         task_X3=as.numeric(str_extract(task, "[-]?[0-9]+\\.[0-9]+(?=X3+)"))) %>%
+  mutate_at(vars(starts_with("task_X")), function(x) {ifelse(is.na(x), 0, x)})
+```
+
+```{r}
+lm(value ~ task_X0 * as.numeric(X0) + task_X1 * as.numeric(X1) + task_X2 * as.numeric(X2)  + task_X3 * as.numeric(X3),
+   data=simil_d) %>%
+  summary()
+```
+
+```{r}
+simil_d %>% 
+  mutate(abs_value=abs(value)) %>%
+  filter(abs_value > 0.05) %>%
+  arrange(desc(abs_value))
+```
+
+
+```{r}
+ggplot(data=simil_d,
+       aes(x=vars_relevant_IoU, color=as.factor(point_num_vars_relevant), y=abs(value))) +
+  geom_point(stat="summary",
+             fun.y="mean")
+```
+
+```{r}
+lm(abs(value) ~ point_num_vars_relevant + task_num_vars_relevant + vars_relevant_IoU,
+  data=simil_d) %>% summary()
+```
+
+```{r}
+lm(value ~ mapping_scalar * (as.numeric(X0) + as.numeric(X1) + as.numeric(X2) + as.numeric(X3)),
+   data=simil_d %>%
+         filter(grepl("mult", task)) %>%
+         mutate(mapping_scalar=as.numeric(str_extract(task, "[-]?[0-9]+\\.[0-9]+")))) %>%
+  summary()
 ```
