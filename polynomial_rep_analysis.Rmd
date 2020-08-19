@@ -1129,61 +1129,66 @@ for (run_i in 0:(num_mapped_runs-1)) {
 ```
 
 ```{r}
-run_i = 1
-
-this_task_d = mapped_d[[run_i]] %>%
-  pivot_longer(-c(dimension, run), names_to="task") %>%
-  filter(grepl("None", task)) %>% # unmapped only
-  mutate(data_type="task_rep",
-         dimension=sprintf("dim%i", dimension)) %>%
-  pivot_wider(names_from=dimension)
-
-this_task_matrix = this_task_d %>%
-  # normalize_rows
-  pivot_longer(starts_with("dim"), names_to="dim") %>%
-  group_by(task, data_type, run) %>%
-  mutate(value = value / sqrt(sum(value^2))) %>%
-  ungroup() %>%
-  pivot_wider(names_from="dim") %>%
-  select(-task, -data_type, -run) %>%
-  as.matrix
-
-this_input_d = input_rep_d[[run_i]] %>%
-  mutate(data_type="input_rep") %>%
-  # filter(X1 == 0,
-  #        X2 == 0,
-  #        X3 == 0) %>%
-  unite("data_point", starts_with("X"), sep=":") %>%
-  distinct()
-
-this_input_matrix = this_input_d %>%
-  # normalize_rows
-  pivot_longer(starts_with("dim"), names_to="dim") %>%
-  group_by(data_point, data_type, run) %>%
-  mutate(value = value / sqrt(sum(value^2))) %>%
-  ungroup() %>%
-  pivot_wider(names_from="dim") %>%
-  select(-data_point, -data_type, -run) %>%
-  as.matrix
+all_simil_d = data.frame()
+for (run_i in 1:num_mapped_runs) {
   
-similarities_matrix = this_task_matrix %*% t(this_input_matrix)
-
-colnames(similarities_matrix) = this_input_d$data_point
-simil_d = similarities_matrix %>%
-  as.data.frame %>%
-  mutate(task = this_task_d$task) %>%
-  rowwise() %>%
-  mutate(task_vars_relevant=str_extract_all(task, "X[0-4]") %>%
-                                unlist %>% unique %>% sort %>%
-                                paste(collapse="")) %>%
-  ungroup() %>%
-  pivot_longer(-c(task, task_vars_relevant), names_to="data_point") %>%
-  separate(data_point, c("X0", "X1", "X2", "X3"), sep=":")
+  this_task_d = mapped_d[[run_i]] %>%
+    pivot_longer(-c(dimension, run), names_to="task") %>%
+    filter(grepl("None", task)) %>% # unmapped only
+    mutate(data_type="task_rep",
+           dimension=sprintf("dim%i", dimension)) %>%
+    pivot_wider(names_from=dimension)
+  
+  this_task_matrix = this_task_d %>%
+    # normalize_rows
+    pivot_longer(starts_with("dim"), names_to="dim") %>%
+    group_by(task, data_type, run) %>%
+    mutate(value = value / sqrt(sum(value^2))) %>%
+    ungroup() %>%
+    pivot_wider(names_from="dim") %>%
+    select(-task, -data_type, -run) %>%
+    as.matrix
+  
+  this_input_d = input_rep_d[[run_i]] %>%
+    mutate(data_type="input_rep") %>%
+    # filter(X1 == 0,
+    #        X2 == 0,
+    #        X3 == 0) %>%
+    unite("data_point", starts_with("X"), sep=":") %>%
+    distinct()
+  
+  this_input_matrix = this_input_d %>%
+    # normalize_rows
+    pivot_longer(starts_with("dim"), names_to="dim") %>%
+    group_by(data_point, data_type, run) %>%
+    mutate(value = value / sqrt(sum(value^2))) %>%
+    ungroup() %>%
+    pivot_wider(names_from="dim") %>%
+    select(-data_point, -data_type, -run) %>%
+    as.matrix
+    
+  similarities_matrix = this_task_matrix %*% t(this_input_matrix)
+  
+  colnames(similarities_matrix) = this_input_d$data_point
+  simil_d = similarities_matrix %>%
+    as.data.frame %>%
+    mutate(task = this_task_d$task) %>%
+    rowwise() %>%
+    mutate(task_vars_relevant=str_extract_all(task, "X[0-4]") %>%
+                                  unlist %>% unique %>% sort %>%
+                                  paste(collapse="")) %>%
+    ungroup() %>%
+    pivot_longer(-c(task, task_vars_relevant), names_to="data_point") %>%
+    separate(data_point, c("X0", "X1", "X2", "X3"), sep=":") %>%
+    mutate(run=run_i)
+  all_simil_d = bind_rows(all_simil_d,
+                          simil_d)
+}
 
 ```
 
 ```{r}
-simil_d = simil_d %>%
+all_simil_d = all_simil_d %>%
   mutate(task_base_or_meta=str_extract(task, "base|meta"),
          point_num_vars_relevant = (X0 != 0) + (X1 != 0) + (X2 != 0) + (X3 != 0),
          task_num_vars_relevant = str_length(task_vars_relevant)/2,
@@ -1198,11 +1203,31 @@ simil_d = simil_d %>%
          vars_relevant_IoU = ifelse(task_num_vars_relevant == 0 & point_num_vars_relevant ==0, NA, ((task_X0_relevant & point_X0_relevant) + (task_X1_relevant & point_X1_relevant) +(task_X2_relevant & point_X2_relevant) +(task_X3_relevant & point_X3_relevant))/ ((task_X0_relevant | point_X0_relevant) + (task_X1_relevant | point_X1_relevant) +(task_X2_relevant | point_X2_relevant) +(task_X3_relevant | point_X3_relevant))))
 ```
 
+
+## basic densities
+
 ```{r}
-ggplot(data=simil_d %>%
-         group_by(task_num_vars_relevant, point_num_vars_relevant) %>%
+ggplot(data=all_simil_d %>%
+         mutate(task_base_or_meta=factor(task_base_or_meta, levels=c("base", "meta"), labels=c("Base", "Meta"))),
+       aes(x=value, color=task_base_or_meta)) +
+  facet_wrap(~ run) +
+  geom_density() +
+  scale_color_manual(values=c("#49006a", "#fa9fb5")) +
+  geom_density()  +
+  guides(color=guide_legend(title="Task type")) +
+  labs(x="Cosine between input point and task representations", y="Density") +
+  theme(legend.position=c(0.93, 0.28))
+
+ggsave("../metamapping_paper/figures/polynomial_reps/input_to_task_rep_similarity.pdf", width=6, height=4)
+```
+
+
+```{r}
+ggplot(data=all_simil_d %>%
+         group_by(run, task_num_vars_relevant, point_num_vars_relevant) %>%
          summarize(mean_abs_simil = mean(abs(value))),
        aes(x=task_num_vars_relevant, color=as.factor(point_num_vars_relevant), y=mean_abs_simil)) +
+  facet_wrap(~ run) +
   geom_point(position="dodge")# +
   # geom_linerange(stat="summary",
   #                fun.y="mean_cl_boot",
@@ -1211,7 +1236,7 @@ ggplot(data=simil_d %>%
 
 
 ```{r}
-simil_d = simil_d %>%
+all_simil_d = all_simil_d %>%
   mutate(task_X0=as.numeric(str_extract(task, "[-]?[0-9]+\\.[0-9]+(?=X0+)")),
          task_X1=as.numeric(str_extract(task, "[-]?[0-9]+\\.[0-9]+(?=X1+)")),
          task_X2=as.numeric(str_extract(task, "[-]?[0-9]+\\.[0-9]+(?=X2+)")),
@@ -1220,13 +1245,15 @@ simil_d = simil_d %>%
 ```
 
 ```{r}
-lm(value ~ task_X0 * as.numeric(X0) + task_X1 * as.numeric(X1) + task_X2 * as.numeric(X2)  + task_X3 * as.numeric(X3),
-   data=simil_d) %>%
-  summary()
+all_simil_d %>%
+  filter(task_base_or_meta == "base") %>%
+  group_by(run) %>%
+  do(res=summary(lm(.$value ~ .$task_X0 *as.numeric(.$X0) + .$task_X1 * as.numeric(.$X1) + .$task_X2 * as.numeric(.$X2) + .$task_X3 * as.numeric(.$X3)))) %>%
+  pull(res) 
 ```
 
 ```{r}
-simil_d %>% 
+all_simil_d %>% 
   mutate(abs_value=abs(value)) %>%
   filter(abs_value > 0.05) %>%
   arrange(desc(abs_value))
@@ -1234,10 +1261,12 @@ simil_d %>%
 
 
 ```{r}
-ggplot(data=simil_d,
-       aes(x=vars_relevant_IoU, color=as.factor(point_num_vars_relevant), y=abs(value))) +
-  geom_point(stat="summary",
-             fun.y="mean")
+ggplot(data=all_simil_d %>%
+         filter(task_base_or_meta == "base",
+                !is.na(vars_relevant_IoU)),
+       aes(x=as.factor(vars_relevant_IoU), color=as.factor(point_num_vars_relevant), y=value)) +
+  facet_wrap(~run) +
+  geom_violin()
 ```
 
 ```{r}
@@ -1246,9 +1275,12 @@ lm(abs(value) ~ point_num_vars_relevant + task_num_vars_relevant + vars_relevant
 ```
 
 ```{r}
-lm(value ~ mapping_scalar * (as.numeric(X0) + as.numeric(X1) + as.numeric(X2) + as.numeric(X3)),
-   data=simil_d %>%
-         filter(grepl("mult", task)) %>%
-         mutate(mapping_scalar=as.numeric(str_extract(task, "[-]?[0-9]+\\.[0-9]+")))) %>%
-  summary()
+all_simil_d %>%
+  filter(grepl("mult|add", task)) %>%
+  mutate(
+    mapping_type = str_extract(task, "add|mult"),
+    mapping_scalar=as.numeric(str_extract(task, "[-]?[0-9]+\\.[0-9]+"))) %>%
+  group_by(run, mapping_type) %>%
+  do(res=summary(lm(.$value ~ .$mapping_scalar * (as.numeric(.$X0) + as.numeric(.$X1) + as.numeric(.$X2) + as.numeric(.$X3))))) %>%
+  pull(res) 
 ```
