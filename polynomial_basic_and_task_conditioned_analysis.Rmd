@@ -226,7 +226,7 @@ ggplot(summarized_d %>%
   
 
 #ggsave("../metamapping_paper/figures/polynomials_adaptation.png", width=4, height=3)
-ggsave("../../psych/dissertation/2-HoMM/figures/polynomials_adaptation.png", width=5, height=3)
+#ggsave("../../psych/dissertation/2-HoMM/figures/polynomials_adaptation.png", width=5, height=3)
 ```
 
 ```{r}
@@ -421,7 +421,7 @@ ggplot(mm_summarized_d %>%
   
 
 ggsave("../metamapping_paper/figures/polynomials_adaptation_by_mapping.png", width=5, height=3)
-ggsave("../../psych/dissertation/2-HoMM/figures/polynomials_adaptation_by_mapping.png", width=6, height=4)
+#ggsave("../../psych/dissertation/2-HoMM/figures/polynomials_adaptation_by_mapping.png", width=6, height=4)
 
 ```
 
@@ -448,8 +448,8 @@ ggplot(mcl_summarized_d %>%
          filter(base_task_toe == "eval") %>%
          mutate(run_type = factor(run_type,
                                   levels=c("polynomials_results", "metaclass_lesion"),
-                                  labels=c("HoMM",
-                                           "HoMM with no\nmeta-classification"))),
+                                  labels=c("With\nmeta-classification",
+                                           "Without\nmeta-classification"))),
        aes(x=mapping_toe, y=variance_explained_vs_zeros,
            color=run_type)) +
   geom_errorbar(stat="summary",
@@ -485,7 +485,7 @@ ggplot(mcl_summarized_d %>%
 
 
 ggsave("../metamapping_paper/figures/metaclass_lesion_polynomials.png", width=4, height=3)
-ggsave("../../psych/dissertation/2-HoMM/figures/metaclass_lesion_polynomials.png", width=5, height=3)
+#ggsave("../../psych/dissertation/2-HoMM/figures/metaclass_lesion_polynomials.png", width=5, height=3)
 ```
 
 ```{r}
@@ -582,8 +582,8 @@ ggplot(nh_summarized_d %>%
          filter(base_task_toe == "eval") %>%
          mutate(run_type = factor(run_type,
                                   levels=c("polynomials_results", "nonhomoiconic"),
-                                  labels=c("HoMM",
-                                           "Non-homoiconic MM"))),
+                                  labels=c("Homoiconic",
+                                           "Non-homoiconic"))),
        aes(x=mapping_toe, y=variance_explained_vs_zeros,
            color=run_type)) +
   geom_errorbar(stat="summary",
@@ -609,7 +609,8 @@ ggplot(nh_summarized_d %>%
   #             group_by(mapping_toe, run_type) %>%
   #             summarize(text_pos = mean(unadapted_variance_explained_vs_zeros) + 0.06),
   #           aes(y=text_pos, color=), label="No adaptation", alpha=0.5, position=position_nudge(x=0.165)) +
-  scale_y_continuous(limits = c(0., 1.), breaks = c(0.8, 0.9, 1.), labels = c("80%", "90%", "100%")) +
+  scale_y_continuous(#limits = c(0., 1.), 
+    breaks = c(0.8, 0.9, 1.), labels = c("80%", "90%", "100%")) +
   scale_color_manual(values=c("#e41a1c", "#000000")) +
   
   guides(color=guide_legend(title=NULL)) +
@@ -619,7 +620,7 @@ ggplot(nh_summarized_d %>%
 
 
 ggsave("../metamapping_paper/figures/nonhomoiconic_polynomials.png", width=4, height=3)
-ggsave("../../psych/dissertation/2-HoMM/figures/nonhomoiconic_polynomials.png", width=5, height=3)
+#ggsave("../../psych/dissertation/2-HoMM/figures/nonhomoiconic_polynomials.png", width=5, height=3)
 ```
 
 ```{r}
@@ -640,7 +641,7 @@ ggplot(nh_summarized_d %>%
          filter(base_task_toe == "eval") %>%
          mutate(run_type = factor(run_type,
                                   levels=c("polynomials_results", "nonhomoiconic"),
-                                  labels=c("HoMM",
+                                  labels=c("Hom. MM",
                                            "Non-hom.\nMM"))),
        aes(x=mapping_toe, y=variance_explained_vs_zeros,
            color=run_type)) +
@@ -723,11 +724,11 @@ ggplot(nh_less_summarized_d %>%
          filter(base_task_toe == "eval") %>%
          mutate(run_type = factor(run_type,
                                   levels=c("polynomials_results", "nonhomoiconic"),
-                                  labels=c("HoMM",
+                                  labels=c("Hom. MM",
                                            "Non-hom.\nMM"))),
        aes(x=meta_task_type, y=variance_explained_vs_zeros,
            color=run_type)) +
-  facet_wrap(~mapping_toe) +
+  facet_wrap(~mapping_toe, scales="free_x") +
   geom_errorbar(stat="summary",
                 fun.data="mean_cl_boot",
                 width=0.4,
@@ -744,7 +745,8 @@ ggplot(nh_less_summarized_d %>%
   
   guides(color=guide_legend(title=NULL)) +
   labs(x = "Meta-mapping trained or held-out",
-       y = "Evaluation performance (%)") #+
+       y = "Evaluation performance (%)") +
+  theme(legend.position=c(0.9, 0.25))
 
 
 
