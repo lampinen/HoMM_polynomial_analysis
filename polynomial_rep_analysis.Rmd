@@ -952,7 +952,8 @@ square_match_plotting_d = plotting_joined_d %>%
 
 
 square_match_plot = ggplot(square_match_plotting_d, 
-       aes(x=source_PC1, y=source_PC2, xend=PC1, yend=PC2, color=compressed_constant_val, linetype=type, alpha=type)) +
+       aes(x=source_PC1, y=source_PC2, xend=PC1, yend=PC2, color=compressed_constant_val, linetype=type#, alpha=type
+           )) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.06, "inches"), type="closed")) +
   geom_text(data=square_match_plotting_d %>% 
               filter(type == "Actual\noutput") %>%
@@ -1002,7 +1003,8 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_match_square.pdf"
                                                    -sqrt(-constant_val))) %>%
            filter(squareable) %>%
            mutate(type = factor("actual_output", levels=c("target_output", "actual_output"), labels=c("Nom.\ntarget", "Actual\noutput"))), 
-       aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_square`, yend=`PC2_mapping_square`, color=compressed_constant_val, linetype=type, alpha=type)) +
+       aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_square`, yend=`PC2_mapping_square`, color=compressed_constant_val, linetype=type#, alpha=type
+           )) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.06, "inches"), type="closed"),
                key_glyph=draw_key_segment_custom) +
   labs(x="PC 1", y="PC 2") +
@@ -1046,7 +1048,8 @@ mult_match_plotting_d = plotting_joined_d %>%
            gsub("\\+-", "-", .))
 
 mult_match_plot = ggplot(mult_match_plotting_d, 
-                         aes(x=source_PC1, y=source_PC2, xend=PC1, yend=PC2, color=compressed_constant_val, linetype=type, alpha=type)) +
+                         aes(x=source_PC1, y=source_PC2, xend=PC1, yend=PC2, color=compressed_constant_val, linetype=type#, alpha=type
+                             )) +
   # geom_segment(data=mult_match_plotting_d %>%
   #                filter(type == "Nominal\ntarget"),
   #              arrow=arrow(angle=15, length=unit(0.06, "inches"), type="open"),
