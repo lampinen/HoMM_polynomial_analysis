@@ -225,7 +225,7 @@ ggplot(summarized_d %>%
        y = "Evaluation performance (%)")
   
 
-#ggsave("../metamapping_paper/figures/polynomials_adaptation.png", width=4, height=3)
+ggsave("../metamapping_paper/figures/polynomials_adaptation.pdf", width=4, height=3)
 #ggsave("../../psych/dissertation/2-HoMM/figures/polynomials_adaptation.png", width=5, height=3)
 ```
 
