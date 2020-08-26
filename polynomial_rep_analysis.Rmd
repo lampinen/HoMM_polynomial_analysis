@@ -90,7 +90,7 @@ for (run_i in 1:runs_to_plot) {
                                                    -sqrt(-constant_val))), 
          aes(x=PC1, y=PC2, color=compressed_constant_val)) +
     geom_point() +  
-    scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+    scale_color_gradientn(colours=c("#a50026", "#d73027", "#f47848", "#f0a551", "#e0b060", "#505050", "#b0b8d0", "#99c4d4", "#74add1", "#4565b4", "#313695"),
                         breaks=c(-6, -4, -2, 0, 2, 4, 6),
                         labels=c(-36, -16, -4, 0, 4, 16, 36)) +
     #scale_color_gradient2() +#breaks=c(-4, -2, 0, 2, 4, 6),
@@ -742,7 +742,8 @@ ggplot(pc_d %>%
          aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_add_3.000000`, yend=`PC2_mapping_add_3.000000`, color=compressed_constant_val)) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
   labs(x="PC 1", y="PC 2") +
-  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  #scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f47848", "#f0a551", "#e0b060", "#505050", "#b0b8d0", "#99c4d4", "#74add1", "#4565b4", "#313695"),
                         breaks=c(-4, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
                         limits=c(-4.5, 4.5)) + 
@@ -762,8 +763,9 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_add_3.pdf", width
          aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_mult_3.000000`, yend=`PC2_mapping_mult_3.000000`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
   labs(x="PC 1", y="PC 2") +
-  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
-                        breaks=c(-4, -2, 0, 2, 4),
+  #scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f47848", "#f0a551", "#e0b060", "#505050", "#b0b8d0", "#99c4d4", "#74add1", "#4565b4", "#313695"),
+                        breaks=c(-4,  -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
                         limits=c(-4.5, 4.5)) + 
   guides(color=guide_colorbar(title="Polynomial\nconstant\nterm")) +
@@ -785,7 +787,8 @@ p = ggplot(pc_d %>%
        aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_square`, yend=`PC2_mapping_square`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
   labs(x="PC 1", y="PC 2") +
-  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  #scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f47848", "#f0a551", "#e0b060", "#505050", "#b0b8d0", "#99c4d4", "#74add1", "#4565b4", "#313695"),
                         breaks=c(-4, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
                         limits=c(-4.5, 4.5)) + 
@@ -810,7 +813,8 @@ ggplot(pc_d %>%
          aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_permute_3210`, yend=`PC2_mapping_permute_3210`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
   labs(x="PC 1", y="PC 2") +
-  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  #scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f47848", "#f0a551", "#e0b060", "#505050", "#b0b8d0", "#99c4d4", "#74add1", "#4565b4", "#313695"),
                         breaks=c(-4, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
                         limits=c(-4.5, 4.5)) + 
@@ -831,7 +835,8 @@ ggplot(pc_d %>%
          aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_permute_1302`, yend=`PC2_mapping_permute_1302`, color=compressed_constant_val, shape=as.factor(num_vars_relevant))) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.1, "inches"), type="closed")) +
   labs(x="PC 1", y="PC 2") +
-  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  #scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f47848", "#f0a551", "#e0b060", "#505050", "#b0b8d0", "#99c4d4", "#74add1", "#4565b4", "#313695"),
                         breaks=c(-4, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
                         limits=c(-4.5, 4.5)) + 
@@ -967,7 +972,8 @@ square_match_plot = ggplot(square_match_plotting_d,
   labs(x="PC 1", y="PC 2") +
   xlim(-0.015, 0.005) +
   ylim(-0.017, 0.01)+
-  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  #scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f47848", "#f0a551", "#e0b060", "#505050", "#b0b8d0", "#99c4d4", "#74add1", "#4565b4", "#313695"),
                         breaks=c(-5, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
                         limits=c(-4.5, 4.5)) + 
@@ -1008,7 +1014,8 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_match_square.pdf"
   geom_segment(arrow=arrow(angle=15, length=unit(0.06, "inches"), type="closed"),
                key_glyph=draw_key_segment_custom) +
   labs(x="PC 1", y="PC 2") +
-  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  #scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f47848", "#f0a551", "#e0b060", "#505050", "#b0b8d0", "#99c4d4", "#74add1", "#4565b4", "#313695"),
                         breaks=c(-4, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
                         limits=c(-4.5, 4.5)) + 
@@ -1067,7 +1074,8 @@ mult_match_plot = ggplot(mult_match_plotting_d,
             nudge_y=-0.0005,
             size=2) +
   labs(x="PC 1", y="PC 2") +
-  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  #scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f47848", "#f0a551", "#e0b060", "#505050", "#b0b8d0", "#99c4d4", "#74add1", "#4565b4", "#313695"),
                         breaks=c(-5, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
                         limits=c(-4.5, 4.5)) + 
@@ -1102,7 +1110,8 @@ ggsave("../metamapping_paper/figures/polynomial_reps/rep_shift_match_mult_3.pdf"
          aes(x=PC1_None, y=PC2_None, xend=`PC1_mapping_mult_3.000000`, yend=`PC2_mapping_mult_3.000000`, color=compressed_constant_val)) +
   geom_segment(arrow=arrow(angle=15, length=unit(0.06, "inches"), type="closed")) +
   labs(x="PC 1", y="PC 2") +
-  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  #scale_color_gradientn(colours=c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#eedd99", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"),
+  scale_color_gradientn(colours=c("#a50026", "#d73027", "#f47848", "#f0a551", "#e0b060", "#505050", "#b0b8d0", "#99c4d4", "#74add1", "#4565b4", "#313695"),
                         breaks=c(-4, -2, 0, 2, 4),
                         labels=c(-16, -4, 0, 4, 16),
                         limits=c(-4.5, 4.5)) + 
