@@ -190,7 +190,7 @@ summarized_d = meta_true_d %>%
   mutate(variance_explained_vs_zeros = (zeros_loss - mean_loss) / zeros_loss,
          unadapted_variance_explained_vs_zeros = (zeros_loss - unadapted_loss) / zeros_loss) %>%
   mutate(mapping_toe = factor(mapping_toe, levels=c("train", "eval"),
-                              labels=c("Trained\nmeta-mappings", "New\nmeta-mappings")))
+                              labels=c("Trained\nmeta-mappings", "Held-out\nmeta-mappings")))
 ```
 
 ```{r}
