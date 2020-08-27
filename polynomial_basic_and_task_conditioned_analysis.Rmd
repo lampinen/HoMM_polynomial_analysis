@@ -5,6 +5,7 @@ output: html_document
 ---
 
 ```{r}
+library(stargazer)
 library(tidyverse)
 ```
 
@@ -189,7 +190,7 @@ summarized_d = meta_true_d %>%
   mutate(variance_explained_vs_zeros = (zeros_loss - mean_loss) / zeros_loss,
          unadapted_variance_explained_vs_zeros = (zeros_loss - unadapted_loss) / zeros_loss) %>%
   mutate(mapping_toe = factor(mapping_toe, levels=c("train", "eval"),
-                              labels=c("Trained\nmeta-mapping", "New\nmeta-mapping")))
+                              labels=c("Trained\nmeta-mappings", "New\nmeta-mappings")))
 ```
 
 ```{r}
@@ -221,11 +222,11 @@ ggplot(summarized_d %>%
   scale_y_continuous(limits = c(0., NA), breaks = c(0., 0.5, 1.), labels = c("0%", "50%", "100%")) +
   scale_color_manual(values=c("#984ea3", "#ff7f00")) +
   guides(color=F) +
-  labs(x = "Meta-mapping trained or new",
+  labs(x = NULL,
        y = "Evaluation performance (%)")
   
 
-ggsave("../metamapping_paper/figures/polynomials_adaptation.pdf", width=4, height=3)
+ggsave("../metamapping_paper/figures/polynomials_adaptation.pdf", width=4, height=2.8)
 #ggsave("../../psych/dissertation/2-HoMM/figures/polynomials_adaptation.png", width=5, height=3)
 ```
 
@@ -243,6 +244,27 @@ summarized_d %>%
             unadapted95max=results2$ymax,
             )
 ```
+
+```{r}
+summarized_d %>%
+  select(-run) %>%
+  mutate_at(vars(contains("vs_zeros")), function(x) {x * 100}) %>%
+  group_by(mapping_toe, base_task_toe) %>%
+  summarize_all(function(x) {signif(mean(x), 3)}) %>%
+  ungroup() %>%
+  mutate(mapping_toe=ifelse(mapping_toe == "New\nmeta-mappings", "New", "Trained"),
+         base_task_toe=ifelse(base_task_toe == "train", "Example", "Evaluation")) %>%
+  rename(`Meta-mapping`=mapping_toe,
+         `Task is\nexample?`=base_task_toe,
+         `Average MSE`=mean_loss,
+         `Zeros MSE`=zeros_loss,
+         `No adaptation MSE`=unadapted_loss,
+         `Normalized performance`=variance_explained_vs_zeros,
+         `No adaptation normalized performance`=unadapted_variance_explained_vs_zeros) %>%
+  mutate_at(vars(contains("performance")), function(x) {paste(as.character(x), "%", sep="")}) %>%
+  stargazer(summary=F, rownames=F)
+```
+
 
 ```{r}
 meta_base_rep_similarities = data.frame(run=0:4, meta_base_rep_similarities=c(0.24416769, 0.10534607, 0.14665513, 0.07097830, 0.21243110))
