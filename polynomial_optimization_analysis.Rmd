@@ -227,12 +227,12 @@ ggplot(loss_d %>%
   geom_hline(yintercept=logified_chance, alpha=0.5, linetype=2) +
   scale_color_manual(values=c("#762a83", "#a6dba0", "#6abe71", "#3a9e51", "#505050")) +
 #  scale_linetype_manual(values=c("solid", "11", "11", "11", "11")) +
-  annotate("text", x=240, y=logified_chance - 1, alpha=0.5, label="Chance") +
+  annotate("text", x=240, y=logified_chance - 1.1, alpha=0.5, label="Chance") +
   labs(x="Epoch (training task representations on new data)", y="Average log-loss on new tasks") +
   guides(color=guide_legend(title=NULL))+#, linetype=guide_legend(title=NULL)) +
   scale_y_log10(breaks=c(1e-02, 1e-01, 1, 1e1, 1e2), labels = c(0.01, 0.1, 1, 10, 100)) +
-  theme(legend.position=c(0.75, 0.875),
-        legend.key.height = unit(0.5, 'lines'),
+  theme(legend.position=c(0.75, 0.885),
+        legend.key.height = unit(0.66, 'lines'),
         legend.key.width = unit(1, 'lines'))
 
 #ggsave("../metamapping_paper/figures/optimization_curves.png", width=4, height=3)
@@ -291,7 +291,7 @@ g = ggplot(loss_d %>%
             show.legend=F) +
   geom_hline(yintercept=logified_chance, alpha=0.5, linetype=2) +
   scale_color_manual(values=c("#e41a1c", "#841010")) +
-  labs(x="Epoch (training task embeddings on new data)", y="Average log-loss on new tasks") +
+  labs(x="Epoch (training task representations on new data)", y="Average log-loss on new tasks") +
   guides(color=guide_legend(title=NULL),
          linetype=guide_legend(title=NULL)) +
   scale_y_log10(breaks=c(1e-02, 1e-01, 1, 1e1, 1e2), labels = c(0.01, 0.1, 1, 10, 100)) +
